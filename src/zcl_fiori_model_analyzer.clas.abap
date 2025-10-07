@@ -39,18 +39,18 @@ public section.
 
   class-methods RUN_COLLECT
     importing
-      !IV_INFILE type RLGRAP-FILENAME
+      !IV_INFILE type STRING
       !IV_IDS type STRING optional
     returning
       value(RT) type TY_RES_TT .
   class-methods WRITE_OUTPUT_CSV
     importing
       !IT_RES type TY_RES_TT
-      !IV_PATH type RLGRAP-FILENAME .
+      !IV_PATH type STRING .
   class-methods WRITE_OUTPUT_JSON
     importing
       !IT_RES type TY_RES_TT
-      !IV_PATH type RLGRAP-FILENAME .
+      !IV_PATH type STRING .
   PRIVATE SECTION.
 
     CLASS-METHODS split_ids
@@ -58,7 +58,7 @@ public section.
       RETURNING VALUE(rt) TYPE ty_string_tt.
 
     CLASS-METHODS read_input_csv
-      IMPORTING iv_path   TYPE rlgrap-filename
+      IMPORTING iv_path   TYPE STRING
                 it_ids    TYPE ty_string_tt OPTIONAL
       RETURNING VALUE(rt) TYPE ty_app_tt.
 
