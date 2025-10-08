@@ -147,7 +147,7 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
     DATA: manifest_json TYPE string,
           metadata_xml  TYPE string,
           manifest      TYPE REF TO zcl_fiori_model_manifest,
-          datasource    TYPE zcl_fiori_model_manifest=>ty_main_ds_info,
+          datasource    TYPE zcl_fiori_model_manifest=>main_datasource_info,
           entity_set    TYPE string,
           name_c        TYPE string.
 
@@ -170,7 +170,7 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
       TRY.
           CREATE OBJECT manifest
             EXPORTING
-              iv_manifest_json = manifest_json.
+              manifest_json = manifest_json.
 
           datasource = manifest->get_main_datasource( ).
 

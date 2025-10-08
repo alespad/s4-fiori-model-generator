@@ -124,7 +124,7 @@ START-OF-SELECTION.
   ENDIF.
 
   " Read input and process
-  DATA: results      TYPE zcl_fiori_model_analyzer=>ty_res_tt,
+  DATA: results      TYPE zcl_fiori_model_analyzer=>result_table,
         input_csv TYPE string.
 
   IF is_local = abap_true.
@@ -144,8 +144,8 @@ START-OF-SELECTION.
 
     " Process
     results = zcl_fiori_model_analyzer=>run_collect(
-                iv_infile = temp_path
-                iv_ids    = p_ids ).
+                infile = temp_path
+                ids    = p_ids ).
 
     " Clean up temp file
     DELETE DATASET temp_path.
@@ -153,8 +153,8 @@ START-OF-SELECTION.
   ELSE.
     " Process directly from server
     results = zcl_fiori_model_analyzer=>run_collect(
-                iv_infile = infile
-                iv_ids    = p_ids ).
+                infile = infile
+                ids    = p_ids ).
   ENDIF.
 
   " Check results
@@ -173,8 +173,8 @@ START-OF-SELECTION.
       WRITE: / 'CSV written to local:',csvout.
     ELSE.
       zcl_fiori_model_analyzer=>write_output_csv(
-        it_res  = results
-        iv_path = csvout ).
+        res  = results
+        path = csvout ).
       WRITE: / 'CSV written to server:', csvout.
     ENDIF.
     count = count + 1.
@@ -187,8 +187,8 @@ START-OF-SELECTION.
       WRITE: / 'JSON written to local:', jsnout.
     ELSE.
       zcl_fiori_model_analyzer=>write_output_json(
-        it_res  = results
-        iv_path = jsnout ).
+        res  = results
+        path = jsnout ).
       WRITE: / 'JSON written to server:', jsnout.
     ENDIF.
     count = count + 1.
@@ -363,7 +363,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *& Form write_csv_local
 *&---------------------------------------------------------------------*
-FORM write_csv_local USING it_res  TYPE zcl_fiori_model_analyzer=>ty_res_tt
+FORM write_csv_local USING it_res  TYPE zcl_fiori_model_analyzer=>result_table
                            iv_path TYPE string.
   DATA: output TYPE TABLE OF string,
         line   TYPE string.
@@ -413,7 +413,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *& Form write_json_local
 *&---------------------------------------------------------------------*
-FORM write_json_local USING it_res  TYPE zcl_fiori_model_analyzer=>ty_res_tt
+FORM write_json_local USING it_res  TYPE zcl_fiori_model_analyzer=>result_table
                             iv_path TYPE string.
   DATA: json   TYPE string,
         output TYPE TABLE OF string.
