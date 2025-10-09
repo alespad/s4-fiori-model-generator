@@ -429,6 +429,7 @@ FORM write_json_local USING it_res  TYPE zcl_fiori_model_analyzer=>result_table
           filename                = iv_path
           filetype                = 'ASC'
           write_field_separator   = abap_false
+          codepage              = '4110'  " UTF-8 encoding
         CHANGING
           data_tab                = output
         EXCEPTIONS
