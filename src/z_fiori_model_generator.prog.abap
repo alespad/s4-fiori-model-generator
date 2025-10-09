@@ -123,8 +123,8 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
-  " Read input and process
-  DATA: results      TYPE zcl_fiori_model_analyzer=>result_table,
+" Read input and process
+  DATA: results   TYPE zcl_fiori_model_analyzer=>result_table,
         input_csv TYPE string.
 
   IF is_local = abap_true.
@@ -135,20 +135,10 @@ START-OF-SELECTION.
       RETURN.
     ENDIF.
 
-    " Write to temp server file for processing
-    DATA temp_path TYPE string.
-    CONCATENATE '/tmp/fiori_input_' sy-uname '_'
-                sy-datum sy-uzeit '.csv'
-      INTO temp_path.
-    PERFORM write_server_file USING temp_path input_csv.
-
-    " Process
-    results = zcl_fiori_model_analyzer=>run_collect(
-                infile = temp_path
-                ids    = p_ids ).
-
-    " Clean up temp file
-    DELETE DATASET temp_path.
+    " Process directly from memory
+    results = zcl_fiori_model_analyzer=>run_collect_from_string(
+                csv_content = input_csv
+                ids         = p_ids ).
 
   ELSE.
     " Process directly from server

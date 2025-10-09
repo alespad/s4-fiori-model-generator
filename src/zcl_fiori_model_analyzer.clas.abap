@@ -1,146 +1,151 @@
-CLASS zcl_fiori_model_analyzer DEFINITION PUBLIC FINAL CREATE PUBLIC.
+class ZCL_FIORI_MODEL_ANALYZER definition
+  public
+  final
+  create public .
 
-  PUBLIC SECTION.
+public section.
 
-    TYPES:
-      BEGIN OF app,
-        fiori_id          TYPE string,
-        app_name          TYPE string,
-        library_link      TYPE string,
-        main_service_name TYPE string,
-        bsp_name          TYPE string,
-      END OF app.
-    TYPES:
-      BEGIN OF result,
+  types:
+    BEGIN OF app,
+        fiori_id     TYPE string,
+        app_name     TYPE string,
+        library_link TYPE string,
+        bsp_name     TYPE string,
+      END OF app .
+  types:
+    BEGIN OF result,
         fiori_id          TYPE string,
         app_name          TYPE string,
         library_link      TYPE string,
         main_service_name TYPE string,
         service_uri       TYPE string,
-        odata_version     TYPE string,
         segw_project      TYPE string,
+        odata_version     TYPE string,
         programming_model TYPE string,
         business_entity   TYPE string,
         fpm_extended      TYPE string,
-      END OF result.
-    TYPES
-      app_table TYPE STANDARD TABLE OF app WITH EMPTY KEY.
-    TYPES
-      result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY.
-    TYPES
-      string_table TYPE STANDARD TABLE OF string
-                   WITH NON-UNIQUE KEY table_line.
+      END OF result .
+  types:
+    app_table TYPE STANDARD TABLE OF app WITH EMPTY KEY .
+  types:
+    result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY .
+  types:
+    string_table TYPE STANDARD TABLE OF string
+                   WITH NON-UNIQUE KEY table_line .
 
-    CONSTANTS model_rap TYPE string VALUE 'RAP' ##NO_TEXT.
-    CONSTANTS model_bopf TYPE string VALUE 'BOPF' ##NO_TEXT.
-    CONSTANTS model_na TYPE string VALUE 'N/A' ##NO_TEXT.
+  constants MODEL_RAP type STRING value 'RAP' ##NO_TEXT.
+  constants MODEL_BOPF type STRING value 'BOPF' ##NO_TEXT.
+  constants MODEL_NA type STRING value 'N/A' ##NO_TEXT.
 
-    CLASS-METHODS run_collect
-      IMPORTING
-        infile        TYPE string
-        ids           TYPE string OPTIONAL
-      RETURNING
-        VALUE(result) TYPE result_table.
+  class-methods RUN_COLLECT
+    importing
+      !INFILE type STRING
+      !IDS type STRING optional
+    returning
+      value(RESULT) type RESULT_TABLE .
+  class-methods RUN_COLLECT_FROM_STRING
+    importing
+      !CSV_CONTENT type STRING
+      !IDS type STRING optional
+    returning
+      value(RESULT) type RESULT_TABLE .
+  class-methods WRITE_OUTPUT_CSV
+    importing
+      !RES type RESULT_TABLE
+      !PATH type STRING .
+  class-methods WRITE_OUTPUT_JSON
+    importing
+      !RES type RESULT_TABLE
+      !PATH type STRING .
+private section.
 
-    CLASS-METHODS write_output_csv
-      IMPORTING
-        res  TYPE result_table
-        path TYPE string.
-
-    CLASS-METHODS write_output_json
-      IMPORTING
-        res  TYPE result_table
-        path TYPE string.
-
-  PRIVATE SECTION.
-
-    CLASS-METHODS split_ids
-      IMPORTING
-        ids           TYPE string
-      RETURNING
-        VALUE(result) TYPE string_table.
-
-    CLASS-METHODS read_input_csv
-      IMPORTING
-        path          TYPE string
-        ids           TYPE string_table OPTIONAL
-      RETURNING
-        VALUE(result) TYPE app_table.
-
-    CLASS-METHODS analyze_app
-      IMPORTING
-        app           TYPE app
-      RETURNING
-        VALUE(result) TYPE result.
-
-    CLASS-METHODS get_metadata_xml
-      IMPORTING
-        service_name  TYPE string
-      RETURNING
-        VALUE(xml)    TYPE string.
-
-    CLASS-METHODS detect_odata_version
-      IMPORTING
-        xml           TYPE string
-      RETURNING
-        VALUE(version) TYPE string.
-
-    CLASS-METHODS guess_cds_c_from_metadata
-      IMPORTING
-        xml           TYPE string
-      RETURNING
-        VALUE(cds_c)  TYPE string.
-
-    CLASS-METHODS c_to_i
-      IMPORTING
-        cds_c         TYPE string
-      RETURNING
-        VALUE(cds_i)  TYPE string.
-
-    CLASS-METHODS read_ddl_source
-      IMPORTING
-        ddlname       TYPE string
-      RETURNING
-        VALUE(source) TYPE string.
-
-    CLASS-METHODS get_manifest_json
-      IMPORTING
-        bsp_name      TYPE string
-      RETURNING
-        VALUE(json)   TYPE string.
-
-    CLASS-METHODS detect_fe_fpm
-      IMPORTING
-        manifest_json TYPE string
-      EXPORTING
-        is_fe         TYPE abap_bool
-        fe_version    TYPE string
-        fpm_flag      TYPE string.
-
-    CLASS-METHODS classify
-      IMPORTING
-        odata_version  TYPE string
-        name_c         TYPE string
-        name_i         TYPE string
-        src_c          TYPE string
-        src_i          TYPE string
-      EXPORTING
-        model          TYPE string
-        business_ent   TYPE string.
-
-    CLASS-METHODS split_csv_line
-      IMPORTING
-        line          TYPE string
-        delim         TYPE c DEFAULT ','
-        quote         TYPE c DEFAULT '"'
-      RETURNING
-        VALUE(result) TYPE string_table.
-
+  class-methods READ_INPUT_CSV_FROM_STRING
+    importing
+      !CSV_CONTENT type STRING
+      !IDS type STRING_TABLE optional
+    returning
+      value(RESULT) type APP_TABLE .
+  class-methods SPLIT_IDS
+    importing
+      !IDS type STRING
+    returning
+      value(RESULT) type STRING_TABLE .
+  class-methods READ_INPUT_CSV
+    importing
+      !PATH type STRING
+      !IDS type STRING_TABLE optional
+    returning
+      value(RESULT) type APP_TABLE .
+  class-methods ANALYZE_APP
+    importing
+      !APP type APP
+    returning
+      value(RESULT) type RESULT .
+  class-methods GET_METADATA_XML
+    importing
+      !SERVICE_NAME type STRING
+    returning
+      value(XML) type STRING .
+  class-methods DETECT_ODATA_VERSION
+    importing
+      !XML type STRING
+    returning
+      value(VERSION) type STRING .
+  class-methods GUESS_CDS_C_FROM_METADATA
+    importing
+      !XML type STRING
+    returning
+      value(CDS_C) type STRING .
+  class-methods C_TO_I
+    importing
+      !CDS_C type STRING
+    returning
+      value(CDS_I) type STRING .
+  class-methods READ_DDL_SOURCE
+    importing
+      !DDLNAME type STRING
+    returning
+      value(SOURCE) type STRING .
+  class-methods GET_MANIFEST_JSON
+    importing
+      !BSP_NAME type STRING
+    returning
+      value(JSON) type STRING .
+  class-methods DETECT_FE_FPM
+    importing
+      !MANIFEST_JSON type STRING
+    exporting
+      !IS_FE type ABAP_BOOL
+      !FE_VERSION type STRING
+      !FPM_FLAG type STRING .
+  class-methods CLASSIFY
+    importing
+      !ODATA_VERSION type STRING
+      !NAME_C type STRING
+      !NAME_I type STRING
+      !SRC_C type STRING
+      !SRC_I type STRING
+    exporting
+      !MODEL type STRING
+      !BUSINESS_ENT type STRING .
+  class-methods SPLIT_CSV_LINE
+    importing
+      !LINE type STRING
+      !DELIM type C default ','
+      !QUOTE type C default '"'
+    returning
+      value(RESULT) type STRING_TABLE .
+  class-methods FIND_ALIAS
+    importing
+      !NAME_C type STRING
+    exporting
+      !SOURCE_C type STRING
+      !SOURCE_I type STRING .
 ENDCLASS.
 
 
 
-CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
+CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
 
   METHOD analyze_app.
@@ -155,9 +160,8 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
       fiori_id          = app-fiori_id
       app_name          = app-app_name
       library_link      = app-library_link
-      main_service_name = app-main_service_name
+      main_service_name = ''
       service_uri       = ''
-      odata_version     = ''
       programming_model = ''
       business_entity   = ''
       fpm_extended      = 'N/A' ).
@@ -176,30 +180,29 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
 
           IF datasource-uri IS NOT INITIAL.
             result-service_uri = datasource-uri.
-          ENDIF.
-
-          IF datasource-odata_version IS NOT INITIAL.
-            result-odata_version = datasource-odata_version.
+            IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
+              result-service_uri = substring( val = result-service_uri len = strlen( result-service_uri ) - 1 ).
+            ENDIF.
+            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(lv_dummy).
+            FIND REGEX '([^/]+)$' IN result-service_uri SUBMATCHES result-main_service_name.
           ENDIF.
 
           entity_set = manifest->get_primary_entityset( ).
 
         CATCH cx_root.
       ENDTRY.
+    ELSE.
+      "if manifest not found, the fiori app doesn't exist in this s4 system
+      CLEAR result.
+      RETURN.
     ENDIF.
 
     DATA: segw_project TYPE /iwbep/i_sbd_sv-project,
           service_name TYPE string,
           services     TYPE TABLE OF string.
 
-    IF app-main_service_name IS NOT INITIAL.
-      IF app-main_service_name CS ','.
-        SPLIT app-main_service_name AT ',' INTO TABLE services.
-        READ TABLE services INDEX 1 INTO service_name.
-      ELSE.
-        service_name = app-main_service_name.
-      ENDIF.
-
+    IF result-main_service_name IS NOT INITIAL.
+      service_name = result-main_service_name.
       SELECT SINGLE project
         FROM /iwbep/i_sbd_sv
         WHERE technical_name = @service_name
@@ -208,20 +211,6 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
       IF sy-subrc = 0.
         result-odata_version = '2.0'.
         result-segw_project  = segw_project.
-
-        IF manifest_json IS NOT INITIAL.
-          DATA: is_fe    TYPE abap_bool,
-                fe_ver   TYPE string,
-                fpm_flag TYPE string.
-          detect_fe_fpm(
-            EXPORTING
-              manifest_json = manifest_json
-            IMPORTING
-              is_fe         = is_fe
-              fe_version    = fe_ver
-              fpm_flag      = fpm_flag ).
-          result-fpm_extended = fpm_flag.
-        ENDIF.
       ENDIF.
     ENDIF.
 
@@ -232,26 +221,23 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
         WHEN result-odata_version = '4.0'
         THEN model_rap
         ELSE model_na ).
-
-      IF manifest_json IS NOT INITIAL.
-        DATA: is_fe3    TYPE abap_bool,
-              fe_ver3   TYPE string,
-              fpm_flag3 TYPE string.
-        detect_fe_fpm(
-          EXPORTING
-            manifest_json = manifest_json
-          IMPORTING
-            is_fe         = is_fe3
-            fe_version    = fe_ver3
-            fpm_flag      = fpm_flag3 ).
-        result-fpm_extended = fpm_flag3.
-      ENDIF.
       RETURN.
     ENDIF.
 
     DATA(name_i) = c_to_i( name_c ).
     DATA(src_i)  = read_ddl_source( name_i ).
     DATA(src_c)  = read_ddl_source( name_c ).
+
+    "if sources not found, search "alias"
+    IF src_i IS INITIAL AND src_c IS INITIAL.
+      find_alias(
+        EXPORTING
+          name_c   = name_c
+        IMPORTING
+          source_c = src_c
+          source_i = src_i
+      ).
+    ENDIF.
 
     classify(
       EXPORTING
@@ -612,12 +598,6 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
           idx_link = sy-index.
         WHEN 'BSPNAME'.
           idx_bsp = sy-index.
-        WHEN 'PRIMARYODATASERVICENAME'.
-          idx_primary = sy-index.
-        WHEN 'ADDITIONALODATASERVICES'.
-          idx_add = sy-index.
-        WHEN 'ODATAV4SERVICEGROUP'.
-          idx_v4group = sy-index.
       ENDCASE.
     ENDDO.
 
@@ -652,18 +632,6 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
         WHEN idx_bsp > 0 AND idx_bsp <= lines( cols )
         THEN cols[ idx_bsp ]
         ELSE '' ).
-      DATA(primary) = COND string(
-        WHEN idx_primary > 0 AND idx_primary <= lines( cols )
-        THEN cols[ idx_primary ]
-        ELSE '' ).
-      DATA(add_raw) = COND string(
-        WHEN idx_add > 0 AND idx_add <= lines( cols )
-        THEN cols[ idx_add ]
-        ELSE '' ).
-      DATA(v4grp) = COND string(
-        WHEN idx_v4group > 0 AND idx_v4group <= lines( cols )
-        THEN cols[ idx_v4group ]
-        ELSE '' ).
 
       IF id IS INITIAL.
         CONTINUE.
@@ -677,32 +645,10 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
         ENDIF.
       ENDIF.
 
-      DATA(add_first) = ''.
-      IF add_raw IS NOT INITIAL.
-        DATA add_services TYPE string_table.
-        SPLIT add_raw AT ',' INTO TABLE add_services.
-        LOOP AT add_services ASSIGNING FIELD-SYMBOL(<s>).
-          CONDENSE <s>.
-          IF <s> IS NOT INITIAL.
-            add_first = <s>.
-            EXIT.
-          ENDIF.
-        ENDLOOP.
-      ENDIF.
-
-      DATA(main) = primary.
-      IF main IS INITIAL AND add_first IS NOT INITIAL.
-        main = add_first.
-      ENDIF.
-      IF main IS INITIAL AND v4grp IS NOT INITIAL.
-        main = v4grp.
-      ENDIF.
-
       APPEND VALUE app(
         fiori_id          = id
         app_name          = app_name
         library_link      = link
-        main_service_name = main
         bsp_name          = bsp ) TO result.
     ENDDO.
 
@@ -715,7 +661,10 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
     DATA(apps)    = read_input_csv( path = infile ids = id_list ).
     result = VALUE #( ).
     LOOP AT apps ASSIGNING FIELD-SYMBOL(<a>).
-      INSERT analyze_app( <a> ) INTO TABLE result.
+      DATA(analyzed) = zcl_fiori_model_analyzer=>analyze_app( <a> ).
+      IF analyzed IS NOT INITIAL.
+        INSERT analyzed INTO TABLE result.
+      ENDIF.
     ENDLOOP.
   ENDMETHOD.
 
@@ -848,4 +797,152 @@ CLASS zcl_fiori_model_analyzer IMPLEMENTATION.
     CLOSE DATASET path.
   ENDMETHOD.
 
+
+  METHOD find_alias.
+    "TO-DO
+    "best way should be to read  service definition
+    "see UI_SrcgProjNegttn_Manag FIORI ID F5551
+    " expose C_SourcingProjectNegotiationTP as SourcingProjectNegotiation;
+
+    "now trying to guess by following name rules
+    DATA: name   TYPE string,
+          nametp TYPE string.
+
+    name = 'C_' && name_c.
+    source_c = read_ddl_source( name ).
+    IF source_c IS INITIAL.
+      nametp = name && 'TP'.
+      source_c = read_ddl_source( nametp ).
+    ENDIF.
+
+    "search I_
+    REPLACE 'C_' WITH 'I_' INTO name.
+    REPLACE 'C_' WITH 'I_' INTO nametp.
+    source_i = read_ddl_source( name ).
+    IF source_i IS INITIAL.
+      source_i = read_ddl_source( nametp ).
+    ENDIF.
+
+
+  ENDMETHOD.
+
+
+METHOD read_input_csv_from_string.
+  DATA: lines       TYPE TABLE OF string,
+        line        TYPE string,
+        cols        TYPE string_table,
+        idx_id      TYPE i VALUE 0,
+        idx_appname TYPE i VALUE 0,
+        idx_link    TYPE i VALUE 0,
+        idx_bsp     TYPE i VALUE 0,
+        name        TYPE string,
+        z_bom       TYPE string,
+        z_zwsp      TYPE string,
+        line_num    TYPE i VALUE 0.
+
+  " Split content into lines
+  SPLIT csv_content AT cl_abap_char_utilities=>newline INTO TABLE lines.
+
+  IF lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " Read header
+  READ TABLE lines INDEX 1 INTO line.
+  IF sy-subrc <> 0 OR line IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  cols = split_csv_line( line ).
+  IF cols IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  z_bom  = cl_abap_conv_in_ce=>uccp( 'FEFF' ).
+  z_zwsp = cl_abap_conv_in_ce=>uccp( '200B' ).
+
+  " Parse header columns
+  DO lines( cols ) TIMES.
+    name = cols[ sy-index ].
+    TRANSLATE name TO UPPER CASE.
+
+    REPLACE ALL OCCURRENCES OF z_bom  IN name WITH ''.
+    REPLACE ALL OCCURRENCES OF z_zwsp IN name WITH ''.
+    REPLACE ALL OCCURRENCES OF REGEX '[[:cntrl:]]' IN name WITH ''.
+
+    CASE name.
+      WHEN 'FIORIID'.
+        idx_id = sy-index.
+      WHEN 'APPNAME'.
+        idx_appname = sy-index.
+      WHEN 'LINK'.
+        idx_link = sy-index.
+      WHEN 'BSPNAME'.
+        idx_bsp = sy-index.
+    ENDCASE.
+  ENDDO.
+
+  " Process data lines
+  LOOP AT lines INTO line FROM 2.
+    IF line IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    cols = split_csv_line( line ).
+
+    IF cols IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    DATA(id) = COND string(
+      WHEN idx_id > 0 AND idx_id <= lines( cols )
+      THEN cols[ idx_id ]
+      ELSE '' ).
+    DATA(app_name) = COND string(
+      WHEN idx_appname > 0 AND idx_appname <= lines( cols )
+      THEN cols[ idx_appname ]
+      ELSE '' ).
+    DATA(link) = COND string(
+      WHEN idx_link > 0 AND idx_link <= lines( cols )
+      THEN cols[ idx_link ]
+      ELSE '' ).
+    DATA(bsp) = COND string(
+      WHEN idx_bsp > 0 AND idx_bsp <= lines( cols )
+      THEN cols[ idx_bsp ]
+      ELSE '' ).
+
+    IF id IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF ids IS SUPPLIED AND ids IS NOT INITIAL.
+      READ TABLE ids WITH KEY table_line = id
+        TRANSPORTING NO FIELDS.
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    APPEND VALUE app(
+      fiori_id     = id
+      app_name     = app_name
+      library_link = link
+      bsp_name     = bsp ) TO result.
+  ENDLOOP.
+ENDMETHOD.
+
+
+METHOD run_collect_from_string.
+  DATA(id_list) = split_ids( ids ).
+  DATA(apps)    = read_input_csv_from_string(
+                    csv_content = csv_content
+                    ids = id_list ).
+  result = VALUE #( ).
+  LOOP AT apps ASSIGNING FIELD-SYMBOL(<a>).
+    DATA(analyzed) = zcl_fiori_model_analyzer=>analyze_app( <a> ).
+    IF analyzed IS NOT INITIAL.
+      INSERT analyzed INTO TABLE result.
+    ENDIF.
+  ENDLOOP.
+ENDMETHOD.
 ENDCLASS.
