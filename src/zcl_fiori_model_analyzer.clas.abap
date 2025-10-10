@@ -137,10 +137,10 @@ private section.
       value(RESULT) type STRING_TABLE .
   class-methods FIND_ALIAS
     importing
-      !NAME_C type STRING
-    exporting
-      !SOURCE_C type STRING
-      !SOURCE_I type STRING .
+      !ENTITY type STRING
+      !SERVICE_BINDING type STRING
+    returning
+      value(NAME_C) type STRING .
 ENDCLASS.
 
 
@@ -178,13 +178,37 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
           datasource = manifest->get_main_datasource( ).
 
+*          IF datasource-uri IS NOT INITIAL.
+*            result-service_uri = datasource-uri.
+*            IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
+*              result-service_uri = substring( val = result-service_uri len = strlen( result-service_uri ) - 1 ).
+*            ENDIF.
+*            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(lv_dummy).
+*            FIND REGEX '([^/]+)$' IN result-service_uri SUBMATCHES result-main_service_name.
+*          ENDIF.
           IF datasource-uri IS NOT INITIAL.
             result-service_uri = datasource-uri.
+
+            " Remove trailing slash if present
             IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
               result-service_uri = substring( val = result-service_uri len = strlen( result-service_uri ) - 1 ).
             ENDIF.
+
+            " Remove everything after semicolon
             SPLIT result-service_uri AT ';' INTO result-service_uri DATA(lv_dummy).
-            FIND REGEX '([^/]+)$' IN result-service_uri SUBMATCHES result-main_service_name.
+
+            " Split URI into segments
+            SPLIT result-service_uri AT '/' INTO TABLE DATA(lt_segments).
+
+            " Start from last segment and go backwards until finding a non-numeric one
+            LOOP AT lt_segments INTO DATA(lv_segment) FROM lines( lt_segments ) TO 1 STEP -1.
+              " Check if segment contains non-numeric characters
+              IF lv_segment CN '0123456789'.
+                result-main_service_name = lv_segment.
+                EXIT.
+              ENDIF.
+            ENDLOOP.
+
           ENDIF.
 
           entity_set = manifest->get_primary_entityset( ).
@@ -216,13 +240,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     name_c = entity_set.
 
-    IF name_c IS INITIAL.
-      result-programming_model = COND string(
-        WHEN result-odata_version = '4.0'
-        THEN model_rap
-        ELSE model_na ).
-      RETURN.
-    ENDIF.
+
 
     DATA(name_i) = c_to_i( name_c ).
     DATA(src_i)  = read_ddl_source( name_i ).
@@ -230,13 +248,20 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     "if sources not found, search "alias"
     IF src_i IS INITIAL AND src_c IS INITIAL.
-      find_alias(
-        EXPORTING
-          name_c   = name_c
-        IMPORTING
-          source_c = src_c
-          source_i = src_i
-      ).
+      name_c =  find_alias( EXPORTING service_binding = result-main_service_name entity = entity_set ).
+      IF name_c IS NOT INITIAL.
+        name_i = c_to_i( name_c ).
+        src_i  = read_ddl_source( name_i ).
+        src_c  = read_ddl_source( name_c ).
+      ENDIF.
+    ENDIF.
+
+    IF name_c IS INITIAL.
+      result-programming_model = COND string(
+        WHEN result-odata_version = '4.0'
+        THEN model_rap
+        ELSE model_na ).
+      RETURN.
     ENDIF.
 
     classify(
@@ -366,8 +391,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     IF manifest_json CS 'sap.ui.controllerExtensions'
       OR manifest_json CS 'viewExtensions'
-      OR manifest_json CS '"extends"'
-      OR manifest_json CS '''extends'''
+      OR manifest_json CS '.ext.'
       OR manifest_json CS '/ext/'
       OR manifest_json CS '"ext/"'.
       fpm_flag = 'Yes'.
@@ -799,30 +823,60 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
 
   METHOD find_alias.
-    "TO-DO
-    "best way should be to read  service definition
-    "see UI_SrcgProjNegttn_Manag FIORI ID F5551
-    " expose C_SourcingProjectNegotiationTP as SourcingProjectNegotiation;
 
-    "now trying to guess by following name rules
-    DATA: name   TYPE string,
-          nametp TYPE string.
+    DATA: service_definition TYPE srvb_name,
+          source             TYPE string,
+          source_lines       TYPE TABLE OF string.
 
-    name = 'C_' && name_c.
-    source_c = read_ddl_source( name ).
-    IF source_c IS INITIAL.
-      nametp = name && 'TP'.
-      source_c = read_ddl_source( nametp ).
+    CLEAR name_c.
+
+    " Step 1: Get Service Definition from Service Binding
+    SELECT SINGLE service_name
+      FROM srvb_service_details
+      INTO @service_definition
+      WHERE srvb_name = @service_binding
+        AND version = 'A'.
+
+    IF sy-subrc <> 0.
+      RETURN.
     ENDIF.
 
-    "search I_
-    REPLACE 'C_' WITH 'I_' INTO name.
-    REPLACE 'C_' WITH 'I_' INTO nametp.
-    source_i = read_ddl_source( name ).
-    IF source_i IS INITIAL.
-      source_i = read_ddl_source( nametp ).
+    " Step 2: Get Service Definition source code
+    SELECT SINGLE source
+      FROM srvdsrc_src
+      INTO @source
+      WHERE srvdname = @service_definition
+        AND version = 'A'.
+
+    IF sy-subrc <> 0.
+      RETURN.
     ENDIF.
 
+    " Step 3: Split source into lines
+    SPLIT source AT cl_abap_char_utilities=>newline INTO TABLE source_lines.
+
+    " Step 4: Search for the entity alias mapping
+    LOOP AT source_lines INTO DATA(line).
+      " Remove leading/trailing spaces
+      line = condense( line ).
+
+      " Check if line contains 'expose' and matches the entity alias
+      IF line CS 'expose' AND line CS 'as' AND line CS entity.
+
+        " Extract the real entity name between 'expose' and 'as'
+        DATA(pattern) = |expose\\s+(\\S+)\\s+as\\s+{ entity }|.
+
+        FIND REGEX pattern IN line SUBMATCHES name_c IGNORING CASE.
+
+        IF sy-subrc = 0.
+          " Remove trailing semicolon if present
+          REPLACE ALL OCCURRENCES OF ';' IN name_c WITH ''.
+          name_c = condense( name_c ).
+          EXIT.
+        ENDIF.
+
+      ENDIF.
+    ENDLOOP.
 
   ENDMETHOD.
 
