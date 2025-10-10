@@ -235,6 +235,8 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
       IF sy-subrc = 0.
         result-odata_version = '2.0'.
         result-segw_project  = segw_project.
+      ELSE.
+        result-odata_version = '4.0'.
       ENDIF.
     ENDIF.
 
@@ -294,82 +296,100 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD classify.
-    DATA: business_entity TYPE string VALUE '',
-          model_type      TYPE string.
+METHOD classify.
+  DATA: business_entity TYPE string VALUE '',
+        model_type      TYPE string,
+        r_entity        TYPE string.
 
-    IF odata_version = '4.0'.
-      IF src_i CS 'define root view entity'.
-        model_type      = model_rap.
-        business_entity = name_i.
-      ELSEIF src_c CS 'define root view entity'.
-        model_type      = model_rap.
-        business_entity = name_c.
-      ELSE.
-        model_type = model_rap.
-        business_entity = COND string(
-          WHEN src_i IS NOT INITIAL
-          THEN name_i
-          ELSE name_c ).
-      ENDIF.
-
-    ELSE. " OData V2
-
-      IF src_i CS '@ObjectModel.modelCategory: #BOPF'
-        OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
-        model_type = model_bopf.
-        business_entity = COND string(
-          WHEN src_i IS NOT INITIAL
-          THEN name_i
-          ELSE name_c ).
-
-      ELSEIF src_c CS 'transactionalProcessingDelegated'.
-        IF name_c CP 'C_*' AND src_c IS NOT INITIAL.
-          DATA i_ref TYPE string.
-          FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
-            SUBMATCHES i_ref IGNORING CASE.
-          IF sy-subrc = 0 AND i_ref IS NOT INITIAL.
-            DATA(src_i_ref) = read_ddl_source( i_ref ).
-            IF src_i_ref CS 'transactionalProcessingEnabled'
-              OR src_i_ref CS 'writeDraftPersistence'.
-              model_type      = model_bopf.
-              business_entity = i_ref.
-              model           = model_type.
-              business_ent    = business_entity.
-              RETURN.
-            ENDIF.
-          ENDIF.
-        ENDIF.
-
-      ELSEIF src_i CS 'define root view entity'
-        OR src_c CS 'define root view entity'.
-        model_type = model_rap.
-        business_entity = COND string(
-          WHEN src_i IS NOT INITIAL
-          THEN name_i
-          ELSE name_c ).
-
-      ELSEIF ( src_c CS '@VDM.viewType: #CONSUMPTION'
-            OR src_i CS '@VDM.viewType: #CONSUMPTION' )
-          OR ( ( src_c CS '@Metadata.allowExtensions'
-              OR src_i CS '@Metadata.allowExtensions' )
-           AND ( name_c CP 'C_*' OR name_i CP 'C_*' ) ).
-        model_type = model_rap.
-        business_entity = COND string(
-          WHEN src_c IS NOT INITIAL
-          THEN name_c
-          ELSE name_i ).
-
-      ELSE.
-        model_type      = model_na.
-        business_entity = name_c.
-      ENDIF.
-
+  IF odata_version = '4.0'.
+    IF src_i CS 'define root view entity'.
+      model_type      = model_rap.
+      business_entity = name_i.
+    ELSEIF src_c CS 'define root view entity'.
+      model_type      = model_rap.
+      business_entity = name_c.
+    ELSE.
+      business_entity = COND string(
+        WHEN src_i IS NOT INITIAL
+        THEN name_i
+        ELSE name_c ).
     ENDIF.
 
-    model        = model_type.
-    business_ent = business_entity.
-  ENDMETHOD.
+    " Check if it's a projection on R_ entity (RAP BO)
+    IF business_entity IS NOT INITIAL.
+      DATA(src_to_check) = COND string(
+        WHEN src_c IS NOT INITIAL
+        THEN src_c
+        ELSE src_i ).
+
+      " Look for 'as projection on R_' or 'from R_' pattern
+      FIND PCRE 'projection\s+on\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+        SUBMATCHES r_entity IGNORING CASE.
+
+      IF sy-subrc <> 0.
+        " Try alternative pattern 'from R_'
+        FIND PCRE 'from\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+          SUBMATCHES r_entity IGNORING CASE.
+      ENDIF.
+
+      " If R_ entity found, that's the real RAP BO
+      IF sy-subrc = 0 AND r_entity IS NOT INITIAL.
+        business_entity = r_entity.
+        model_type = model_rap.
+      ENDIF.
+    ENDIF.
+
+  ELSE. " OData V2
+    IF src_i CS '@ObjectModel.modelCategory: #BOPF'
+      OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
+      model_type = model_bopf.
+      business_entity = COND string(
+        WHEN src_i IS NOT INITIAL
+        THEN name_i
+        ELSE name_c ).
+    ELSEIF src_c CS 'transactionalProcessingDelegated'.
+      IF name_c CP 'C_*' AND src_c IS NOT INITIAL.
+        DATA i_ref TYPE string.
+        FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
+          SUBMATCHES i_ref IGNORING CASE.
+        IF sy-subrc = 0 AND i_ref IS NOT INITIAL.
+          DATA(src_i_ref) = read_ddl_source( i_ref ).
+          IF src_i_ref CS 'transactionalProcessingEnabled'
+            OR src_i_ref CS 'writeDraftPersistence'.
+            model_type      = model_bopf.
+            business_entity = i_ref.
+            model           = model_type.
+            business_ent    = business_entity.
+            RETURN.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ELSEIF src_i CS 'define root view entity'
+      OR src_c CS 'define root view entity'.
+      model_type = model_rap.
+      business_entity = COND string(
+        WHEN src_i IS NOT INITIAL
+        THEN name_i
+        ELSE name_c ).
+    ELSEIF ( src_c CS '@VDM.viewType: #CONSUMPTION'
+          OR src_i CS '@VDM.viewType: #CONSUMPTION' )
+        OR ( ( src_c CS '@Metadata.allowExtensions'
+            OR src_i CS '@Metadata.allowExtensions' )
+         AND ( name_c CP 'C_*' OR name_i CP 'C_*' ) ).
+      model_type = model_rap.
+      business_entity = COND string(
+        WHEN src_c IS NOT INITIAL
+        THEN name_c
+        ELSE name_i ).
+    ELSE.
+      model_type      = model_na.
+      business_entity = name_c.
+    ENDIF.
+  ENDIF.
+
+  model        = model_type.
+  business_ent = business_entity.
+ENDMETHOD.
 
 
   METHOD c_to_i.
@@ -826,7 +846,10 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     DATA: service_definition TYPE srvb_name,
           source             TYPE string,
-          source_lines       TYPE TABLE OF string.
+          source_lines       TYPE TABLE OF string,
+          service_bnd type SRVB_NAME.
+    service_bnd = service_binding.
+    TRANSLATE service_bnd TO UPPER CASE.
 
     CLEAR name_c.
 
@@ -834,7 +857,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
     SELECT SINGLE service_name
       FROM srvb_service_details
       INTO @service_definition
-      WHERE srvb_name = @service_binding
+      WHERE srvb_name = @service_bnd
         AND version = 'A'.
 
     IF sy-subrc <> 0.
