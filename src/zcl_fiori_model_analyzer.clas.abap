@@ -195,16 +195,16 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
             ENDIF.
 
             " Remove everything after semicolon
-            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(lv_dummy).
+            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(dummy).
 
             " Split URI into segments
-            SPLIT result-service_uri AT '/' INTO TABLE DATA(lt_segments).
+            SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
 
             " Start from last segment and go backwards until finding a non-numeric one
-            LOOP AT lt_segments INTO DATA(lv_segment) FROM lines( lt_segments ) TO 1 STEP -1.
+            LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
               " Check if segment contains non-numeric characters
-              IF lv_segment CN '0123456789'.
-                result-main_service_name = lv_segment.
+              IF segment CN '0123456789'.
+                result-main_service_name = segment.
                 EXIT.
               ENDIF.
             ENDLOOP.
