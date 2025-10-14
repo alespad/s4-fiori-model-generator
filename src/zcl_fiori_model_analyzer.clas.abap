@@ -162,7 +162,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
       library_link      = app-library_link
       main_service_name = ''
       service_uri       = ''
-      programming_model = ''
+      programming_model = 'N/A'
       business_entity   = ''
       fpm_extended      = 'N/A' ).
 
@@ -235,6 +235,18 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
       IF sy-subrc = 0.
         result-odata_version = '2.0'.
         result-segw_project  = segw_project.
+      ELSEIF datasource-odata_version = '2.0'.
+        "check if it's a service binding
+        SELECT SINGLE service_name
+                      FROM srvb_service_details
+                      INTO @DATA(service_definition)
+                      WHERE srvb_name = @service_name
+                        AND version = 'A'.
+        result-odata_version = '2.0'.
+        IF sy-subrc NE 0.
+          "probably deprecated app
+          RETURN.
+        ENDIF.
       ELSE.
         result-odata_version = '4.0'.
       ENDIF.
@@ -242,7 +254,11 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     name_c = entity_set.
 
-
+    " for analytical apps / cds paramametrized view
+    "Check if it ends with 'Results' and remove it
+    IF name_c CP '*Results'.
+      REPLACE FIRST OCCURRENCE OF REGEX 'Results$' IN name_c WITH ''.
+    ENDIF.
 
     DATA(name_i) = c_to_i( name_c ).
     DATA(src_i)  = read_ddl_source( name_i ).
@@ -250,6 +266,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
     "if sources not found, search "alias"
     IF src_i IS INITIAL AND src_c IS INITIAL.
+      CLEAR name_c.
       name_c =  find_alias( EXPORTING service_binding = result-main_service_name entity = entity_set ).
       IF name_c IS NOT INITIAL.
         name_i = c_to_i( name_c ).
