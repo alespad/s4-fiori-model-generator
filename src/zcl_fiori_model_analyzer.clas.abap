@@ -81,21 +81,6 @@ private section.
       !APP type APP
     returning
       value(RESULT) type RESULT .
-  class-methods GET_METADATA_XML
-    importing
-      !SERVICE_NAME type STRING
-    returning
-      value(XML) type STRING .
-  class-methods DETECT_ODATA_VERSION
-    importing
-      !XML type STRING
-    returning
-      value(VERSION) type STRING .
-  class-methods GUESS_CDS_C_FROM_METADATA
-    importing
-      !XML type STRING
-    returning
-      value(CDS_C) type STRING .
   class-methods C_TO_I
     importing
       !CDS_C type STRING
@@ -141,275 +126,521 @@ private section.
       !SERVICE_BINDING type STRING
     returning
       value(NAME_C) type STRING .
+  " Aggiungi questi nuovi metodi privati nella sezione PRIVATE SECTION:
+class-methods INITIALIZE_RESULT
+  importing
+    !APP type APP
+  returning
+    value(RESULT) type RESULT.
+
+class-methods EXTRACT_SERVICE_INFO
+  importing
+    !DATASOURCE type ZCL_FIORI_MODEL_MANIFEST=>MAIN_DATASOURCE_INFO
+  changing
+    !RESULT type RESULT.
+
+class-methods DETERMINE_ODATA_VERSION
+  importing
+    !SERVICE_NAME type STRING
+    !DATASOURCE type ZCL_FIORI_MODEL_MANIFEST=>MAIN_DATASOURCE_INFO
+  changing
+    !RESULT type RESULT
+  returning
+    value(CONTINUE_PROCESSING) type ABAP_BOOL.
+
+class-methods RESOLVE_CDS_VIEWS
+  importing
+    !ENTITY_SET type STRING
+    !SERVICE_NAME type STRING
+  exporting
+    !NAME_C type STRING
+    !NAME_I type STRING
+    !SRC_C type STRING
+    !SRC_I type STRING.
+
+class-methods NORMALIZE_ENTITY_NAME
+  importing
+    !ENTITY_SET type STRING
+  returning
+    value(RESULT) type STRING.
+" Aggiungi questi metodi privati:
+class-methods CHECK_ROOT_VIEW_ENTITY
+  importing
+    !SRC_I type STRING
+    !SRC_C type STRING
+    !NAME_I type STRING
+    !NAME_C type STRING
+  exporting
+    !IS_ROOT type ABAP_BOOL
+    !ENTITY_NAME type STRING.
+
+class-methods FIND_RAP_BO_ENTITY
+  importing
+    !SRC_C type STRING
+    !SRC_I type STRING
+    !NAME_C type STRING
+    !NAME_I type STRING
+  returning
+    value(ENTITY) type STRING.
+
+class-methods CHECK_BOPF_INDICATORS_V2
+  importing
+    !SRC_I type STRING
+    !SRC_C type STRING
+    !NAME_C type STRING
+    !NAME_I type STRING
+  exporting
+    !IS_BOPF type ABAP_BOOL
+    !ENTITY_NAME type STRING.
+
+class-methods CHECK_VDM_CONSUMPTION
+  importing
+    !SRC_C type STRING
+    !SRC_I type STRING
+    !NAME_C type STRING
+    !NAME_I type STRING
+  returning
+    value(IS_VDM) type ABAP_BOOL.
 ENDCLASS.
 
 
 
 CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
+METHOD initialize_result.
+  result = VALUE result(
+    fiori_id          = app-fiori_id
+    app_name          = app-app_name
+    library_link      = app-library_link
+    main_service_name = ''
+    service_uri       = ''
+    programming_model = 'N/A'
+    business_entity   = ''
+    fpm_extended      = 'N/A' ).
+ENDMETHOD.
 
-  METHOD analyze_app.
-    DATA: manifest_json TYPE string,
-          metadata_xml  TYPE string,
-          manifest      TYPE REF TO zcl_fiori_model_manifest,
-          datasource    TYPE zcl_fiori_model_manifest=>main_datasource_info,
-          entity_set    TYPE string,
-          name_c        TYPE string.
 
-    result = VALUE result(
-      fiori_id          = app-fiori_id
-      app_name          = app-app_name
-      library_link      = app-library_link
-      main_service_name = ''
-      service_uri       = ''
-      programming_model = 'N/A'
-      business_entity   = ''
-      fpm_extended      = 'N/A' ).
+METHOD extract_service_info.
+  IF datasource-uri IS INITIAL.
+    RETURN.
+  ENDIF.
 
-    IF app-bsp_name IS NOT INITIAL.
-      manifest_json = get_manifest_json( app-bsp_name ).
+  result-service_uri = datasource-uri.
+
+  " Remove trailing slash if present
+  IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
+    result-service_uri = substring( 
+      val = result-service_uri 
+      len = strlen( result-service_uri ) - 1 ).
+  ENDIF.
+
+  " Remove everything after semicolon
+  SPLIT result-service_uri AT ';' INTO result-service_uri DATA(uri_params).
+
+  " Split URI into segments
+  SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
+
+  " Start from last segment and go backwards until finding a non-numeric one
+  LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
+    " Check if segment contains non-numeric characters
+    IF segment CN '0123456789'.
+      result-main_service_name = segment.
+      EXIT.
     ENDIF.
+  ENDLOOP.
+ENDMETHOD.
 
-    IF manifest_json IS NOT INITIAL.
-      TRY.
-          CREATE OBJECT manifest
-            EXPORTING
-              manifest_json = manifest_json.
 
-          datasource = manifest->get_main_datasource( ).
+METHOD determine_odata_version.
+  DATA: segw_project TYPE /iwbep/i_sbd_sv-project,
+        service_definition TYPE string.
 
-*          IF datasource-uri IS NOT INITIAL.
-*            result-service_uri = datasource-uri.
-*            IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
-*              result-service_uri = substring( val = result-service_uri len = strlen( result-service_uri ) - 1 ).
-*            ENDIF.
-*            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(lv_dummy).
-*            FIND REGEX '([^/]+)$' IN result-service_uri SUBMATCHES result-main_service_name.
-*          ENDIF.
-          IF datasource-uri IS NOT INITIAL.
-            result-service_uri = datasource-uri.
+  continue_processing = abap_true.
 
-            " Remove trailing slash if present
-            IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
-              result-service_uri = substring( val = result-service_uri len = strlen( result-service_uri ) - 1 ).
-            ENDIF.
+  IF service_name IS INITIAL.
+    RETURN.
+  ENDIF.
 
-            " Remove everything after semicolon
-            SPLIT result-service_uri AT ';' INTO result-service_uri DATA(dummy).
+  " Check if it's a SEGW project (OData V2)
+  SELECT SINGLE project
+    FROM /iwbep/i_sbd_sv
+    WHERE technical_name = @service_name
+    INTO @segw_project.
 
-            " Split URI into segments
-            SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
+  IF sy-subrc = 0.
+    result-odata_version = '2.0'.
+    result-segw_project  = segw_project.
+    RETURN.
+  ENDIF.
 
-            " Start from last segment and go backwards until finding a non-numeric one
-            LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
-              " Check if segment contains non-numeric characters
-              IF segment CN '0123456789'.
-                result-main_service_name = segment.
-                EXIT.
-              ENDIF.
-            ENDLOOP.
+  " Check if it's a service binding (OData V2)
+  IF datasource-odata_version = '2.0'.
+    SELECT SINGLE service_name
+      FROM srvb_service_details
+      INTO @service_definition
+      WHERE srvb_name = @service_name
+        AND version = 'A'.
+    
+    result-odata_version = '2.0'.
+    
+    IF sy-subrc NE 0.
+      " Probably deprecated app
+      continue_processing = abap_false.
+      RETURN.
+    ENDIF.
+  ELSE.
+    " Default to OData V4
+    result-odata_version = '4.0'.
+  ENDIF.
+ENDMETHOD.
 
-          ENDIF.
 
-          entity_set = manifest->get_primary_entityset( ).
+METHOD normalize_entity_name.
+  result = entity_set.
 
-        CATCH cx_root.
-      ENDTRY.
+  " For analytical apps / CDS parameterized view
+  " Check if it ends with 'Results' and remove it
+  IF result CP '*Results'.
+    REPLACE FIRST OCCURRENCE OF REGEX 'Results$' IN result WITH ''.
+  ENDIF.
+ENDMETHOD.
+
+
+METHOD resolve_cds_views.
+  DATA: normalized_entity TYPE string.
+
+  " Normalize entity name (remove 'Results' suffix if present)
+  normalized_entity = normalize_entity_name( entity_set ).
+  
+  name_c = normalized_entity.
+  name_i = c_to_i( name_c ).
+  
+  " Try to read DDL sources
+  src_i = read_ddl_source( name_i ).
+  src_c = read_ddl_source( name_c ).
+
+  " If sources not found, search for alias
+  IF src_i IS INITIAL AND src_c IS INITIAL.
+    name_c = find_alias( 
+      service_binding = service_name 
+      entity = entity_set ).
+    
+    IF name_c IS NOT INITIAL.
+      name_i = c_to_i( name_c ).
+      src_i = read_ddl_source( name_i ).
+      src_c = read_ddl_source( name_c ).
     ELSE.
-      "if manifest not found, the fiori app doesn't exist in this s4 system
+      CLEAR: name_c, name_i.
+    ENDIF.
+  ENDIF.
+ENDMETHOD.
+
+
+" Metodo ANALYZE_APP refactorizzato:
+METHOD analyze_app.
+  DATA: manifest_json TYPE string,
+        manifest      TYPE REF TO zcl_fiori_model_manifest,
+        datasource    TYPE zcl_fiori_model_manifest=>main_datasource_info,
+        entity_set    TYPE string,
+        name_c        TYPE string,
+        name_i        TYPE string,
+        src_c         TYPE string,
+        src_i         TYPE string.
+
+  " Initialize result structure
+  result = initialize_result( app ).
+
+  " Early exit if no BSP name
+  CHECK app-bsp_name IS NOT INITIAL.
+
+  " Get manifest JSON
+  manifest_json = get_manifest_json( app-bsp_name ).
+  
+  " Early exit if manifest not found (app doesn't exist in this system)
+  CHECK manifest_json IS NOT INITIAL.
+
+  " Parse manifest and extract datasource info
+  TRY.
+      CREATE OBJECT manifest
+        EXPORTING
+          manifest_json = manifest_json.
+
+      datasource = manifest->get_main_datasource( ).
+      extract_service_info(
+        EXPORTING datasource = datasource
+        CHANGING result = result ).
+
+      entity_set = manifest->get_primary_entityset( ).
+
+    CATCH cx_root.
+      " If manifest parsing fails, clear result and exit
       CLEAR result.
       RETURN.
-    ENDIF.
+  ENDTRY.
 
-    DATA: segw_project TYPE /iwbep/i_sbd_sv-project,
-          service_name TYPE string,
-          services     TYPE TABLE OF string.
+  " Determine OData version and SEGW project
+  DATA(continue) = determine_odata_version(
+    EXPORTING
+      service_name = result-main_service_name
+      datasource   = datasource
+    CHANGING
+      result = result ).
 
-    IF result-main_service_name IS NOT INITIAL.
-      service_name = result-main_service_name.
-      SELECT SINGLE project
-        FROM /iwbep/i_sbd_sv
-        WHERE technical_name = @service_name
-        INTO @segw_project.
+  " Exit if deprecated app detected
+  CHECK continue = abap_true.
 
-      IF sy-subrc = 0.
-        result-odata_version = '2.0'.
-        result-segw_project  = segw_project.
-      ELSEIF datasource-odata_version = '2.0'.
-        "check if it's a service binding
-        SELECT SINGLE service_name
-                      FROM srvb_service_details
-                      INTO @DATA(service_definition)
-                      WHERE srvb_name = @service_name
-                        AND version = 'A'.
-        result-odata_version = '2.0'.
-        IF sy-subrc NE 0.
-          "probably deprecated app
-          RETURN.
-        ENDIF.
-      ELSE.
-        result-odata_version = '4.0'.
-      ENDIF.
-    ENDIF.
+  " Resolve CDS views (C and I views)
+  resolve_cds_views(
+    EXPORTING
+      entity_set   = entity_set
+      service_name = result-main_service_name
+    IMPORTING
+      name_c = name_c
+      name_i = name_i
+      src_c  = src_c
+      src_i  = src_i ).
 
-    name_c = entity_set.
+  " If CDS views not found, determine programming model and exit
+  IF name_c IS INITIAL.
+    result-programming_model = COND string(
+      WHEN result-odata_version = '4.0'
+      THEN model_rap
+      ELSE model_na ).
+    RETURN.
+  ENDIF.
 
-    " for analytical apps / cds paramametrized view
-    "Check if it ends with 'Results' and remove it
-    IF name_c CP '*Results'.
-      REPLACE FIRST OCCURRENCE OF REGEX 'Results$' IN name_c WITH ''.
-    ENDIF.
+  " Classify programming model and business entity
+  classify(
+    EXPORTING
+      odata_version = result-odata_version
+      name_c        = name_c
+      name_i        = name_i
+      src_c         = src_c
+      src_i         = src_i
+    IMPORTING
+      model        = result-programming_model
+      business_ent = result-business_entity ).
 
-    DATA(name_i) = c_to_i( name_c ).
-    DATA(src_i)  = read_ddl_source( name_i ).
-    DATA(src_c)  = read_ddl_source( name_c ).
+  " Detect Fiori Elements and FPM extensions
+  detect_fe_fpm(
+    EXPORTING
+      manifest_json = manifest_json
+    IMPORTING
+      fpm_flag = result-fpm_extended ).
 
-    "if sources not found, search "alias"
-    IF src_i IS INITIAL AND src_c IS INITIAL.
-      CLEAR name_c.
-      name_c =  find_alias( EXPORTING service_binding = result-main_service_name entity = entity_set ).
-      IF name_c IS NOT INITIAL.
-        name_i = c_to_i( name_c ).
-        src_i  = read_ddl_source( name_i ).
-        src_c  = read_ddl_source( name_c ).
-      ENDIF.
-    ENDIF.
+ENDMETHOD.
 
-    IF name_c IS INITIAL.
-      result-programming_model = COND string(
-        WHEN result-odata_version = '4.0'
-        THEN model_rap
-        ELSE model_na ).
-      RETURN.
-    ENDIF.
+METHOD check_root_view_entity.
+  is_root = abap_false.
+  
+  IF src_i CS 'define root view entity'.
+    is_root = abap_true.
+    entity_name = name_i.
+  ELSEIF src_c CS 'define root view entity'.
+    is_root = abap_true.
+    entity_name = name_c.
+  ELSE.
+    entity_name = COND string(
+      WHEN src_i IS NOT INITIAL
+      THEN name_i
+      ELSE name_c ).
+  ENDIF.
+ENDMETHOD.
 
-    classify(
-      EXPORTING
-        odata_version = result-odata_version
-        name_c        = name_c
-        name_i        = name_i
-        src_c         = src_c
-        src_i         = src_i
-      IMPORTING
-        model         = result-programming_model
-        business_ent  = result-business_entity ).
 
-    IF manifest_json IS NOT INITIAL.
-      DATA: is_fe4    TYPE abap_bool,
-            fe_ver4   TYPE string,
-            fpm_flag4 TYPE string.
-      detect_fe_fpm(
-        EXPORTING
-          manifest_json = manifest_json
-        IMPORTING
-          is_fe         = is_fe4
-          fe_version    = fe_ver4
-          fpm_flag      = fpm_flag4 ).
-      result-fpm_extended = fpm_flag4.
-    ELSE.
-      result-fpm_extended = 'N/A'.
-    ENDIF.
+METHOD find_rap_bo_entity.
+  DATA: src_to_check TYPE string,
+        entity_temp TYPE string.
 
-  ENDMETHOD.
+  CLEAR entity.
+
+  src_to_check = COND string(
+    WHEN src_c IS NOT INITIAL
+    THEN src_c
+    ELSE src_i ).
+
+  CHECK src_to_check IS NOT INITIAL.
+
+  " Look for 'as projection on R_' pattern
+  FIND PCRE 'projection\s+on\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+    SUBMATCHES entity_temp IGNORING CASE.
+
+  IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+    entity = entity_temp.
+    RETURN.
+  ENDIF.
+
+  " Try alternative pattern 'from R_'
+  FIND PCRE 'from\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+    SUBMATCHES entity_temp IGNORING CASE.
+
+  IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+    entity = entity_temp.
+  ENDIF.
+ENDMETHOD.
+
+
+METHOD check_bopf_indicators_v2.
+  is_bopf = abap_false.
+  CLEAR entity_name.
+
+  " Check for explicit BOPF annotation
+  IF src_i CS '@ObjectModel.modelCategory: #BOPF'
+    OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
+    is_bopf = abap_true.
+    entity_name = COND string(
+      WHEN src_i IS NOT INITIAL
+      THEN name_i
+      ELSE name_c ).
+    RETURN.
+  ENDIF.
+
+  " Check for transactional processing delegation pattern
+  CHECK src_c CS 'transactionalProcessingDelegated'.
+  CHECK name_c CP 'C_*' AND src_c IS NOT INITIAL.
+
+  DATA: i_ref TYPE string,
+        src_i_ref TYPE string.
+
+  FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
+    SUBMATCHES i_ref IGNORING CASE.
+
+  CHECK sy-subrc = 0 AND i_ref IS NOT INITIAL.
+
+  src_i_ref = read_ddl_source( i_ref ).
+  
+  IF src_i_ref CS 'transactionalProcessingEnabled'
+    OR src_i_ref CS 'writeDraftPersistence'.
+    is_bopf = abap_true.
+    entity_name = i_ref.
+  ENDIF.
+ENDMETHOD.
+
+
+METHOD check_vdm_consumption.
+  is_vdm = abap_false.
+
+  " Check for VDM consumption annotation
+  IF src_c CS '@VDM.viewType: #CONSUMPTION'
+    OR src_i CS '@VDM.viewType: #CONSUMPTION'.
+    is_vdm = abap_true.
+    RETURN.
+  ENDIF.
+
+  " Check for metadata extensions with C_ naming pattern
+  IF ( src_c CS '@Metadata.allowExtensions'
+    OR src_i CS '@Metadata.allowExtensions' )
+    AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
+    is_vdm = abap_true.
+  ENDIF.
+ENDMETHOD.
 
 
 METHOD classify.
-  DATA: business_entity TYPE string VALUE '',
+  DATA: business_entity TYPE string,
         model_type      TYPE string,
+        is_root         TYPE abap_bool,
         r_entity        TYPE string.
 
+  CLEAR: model, business_ent.
+
+  " ============================================================
+  " OData V4 Classification
+  " ============================================================
   IF odata_version = '4.0'.
-    IF src_i CS 'define root view entity'.
-      model_type      = model_rap.
-      business_entity = name_i.
-    ELSEIF src_c CS 'define root view entity'.
-      model_type      = model_rap.
-      business_entity = name_c.
-    ELSE.
-      business_entity = COND string(
-        WHEN src_i IS NOT INITIAL
-        THEN name_i
-        ELSE name_c ).
+    
+    " Check for root view entity
+    check_root_view_entity(
+      EXPORTING
+        src_i  = src_i
+        src_c  = src_c
+        name_i = name_i
+        name_c = name_c
+      IMPORTING
+        is_root     = is_root
+        entity_name = business_entity ).
+
+    IF is_root = abap_true.
+      model_type = model_rap.
     ENDIF.
 
     " Check if it's a projection on R_ entity (RAP BO)
     IF business_entity IS NOT INITIAL.
-      DATA(src_to_check) = COND string(
-        WHEN src_c IS NOT INITIAL
-        THEN src_c
-        ELSE src_i ).
+      r_entity = find_rap_bo_entity(
+        src_c  = src_c
+        src_i  = src_i
+        name_c = name_c
+        name_i = name_i ).
 
-      " Look for 'as projection on R_' or 'from R_' pattern
-      FIND PCRE 'projection\s+on\s+(R_[A-Za-z0-9_]+)' IN src_to_check
-        SUBMATCHES r_entity IGNORING CASE.
-
-      IF sy-subrc <> 0.
-        " Try alternative pattern 'from R_'
-        FIND PCRE 'from\s+(R_[A-Za-z0-9_]+)' IN src_to_check
-          SUBMATCHES r_entity IGNORING CASE.
-      ENDIF.
-
-      " If R_ entity found, that's the real RAP BO
-      IF sy-subrc = 0 AND r_entity IS NOT INITIAL.
+      IF r_entity IS NOT INITIAL.
         business_entity = r_entity.
         model_type = model_rap.
       ENDIF.
     ENDIF.
 
-  ELSE. " OData V2
-    IF src_i CS '@ObjectModel.modelCategory: #BOPF'
-      OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
+  " ============================================================
+  " OData V2 Classification
+  " ============================================================
+  ELSE.
+    
+    DATA: is_bopf TYPE abap_bool,
+          bopf_entity TYPE string.
+
+    " Check for BOPF indicators
+    check_bopf_indicators_v2(
+      EXPORTING
+        src_i  = src_i
+        src_c  = src_c
+        name_c = name_c
+        name_i = name_i
+      IMPORTING
+        is_bopf     = is_bopf
+        entity_name = bopf_entity ).
+
+    IF is_bopf = abap_true.
       model_type = model_bopf.
-      business_entity = COND string(
-        WHEN src_i IS NOT INITIAL
-        THEN name_i
-        ELSE name_c ).
-    ELSEIF src_c CS 'transactionalProcessingDelegated'.
-      IF name_c CP 'C_*' AND src_c IS NOT INITIAL.
-        DATA i_ref TYPE string.
-        FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
-          SUBMATCHES i_ref IGNORING CASE.
-        IF sy-subrc = 0 AND i_ref IS NOT INITIAL.
-          DATA(src_i_ref) = read_ddl_source( i_ref ).
-          IF src_i_ref CS 'transactionalProcessingEnabled'
-            OR src_i_ref CS 'writeDraftPersistence'.
-            model_type      = model_bopf.
-            business_entity = i_ref.
-            model           = model_type.
-            business_ent    = business_entity.
-            RETURN.
-          ENDIF.
-        ENDIF.
-      ENDIF.
-    ELSEIF src_i CS 'define root view entity'
-      OR src_c CS 'define root view entity'.
+      business_entity = bopf_entity.
+      model = model_type.
+      business_ent = business_entity.
+      RETURN.
+    ENDIF.
+
+    " Check for root view entity (RAP in V2)
+    check_root_view_entity(
+      EXPORTING
+        src_i  = src_i
+        src_c  = src_c
+        name_i = name_i
+        name_c = name_c
+      IMPORTING
+        is_root     = is_root
+        entity_name = business_entity ).
+
+    IF is_root = abap_true.
       model_type = model_rap.
-      business_entity = COND string(
-        WHEN src_i IS NOT INITIAL
-        THEN name_i
-        ELSE name_c ).
-    ELSEIF ( src_c CS '@VDM.viewType: #CONSUMPTION'
-          OR src_i CS '@VDM.viewType: #CONSUMPTION' )
-        OR ( ( src_c CS '@Metadata.allowExtensions'
-            OR src_i CS '@Metadata.allowExtensions' )
-         AND ( name_c CP 'C_*' OR name_i CP 'C_*' ) ).
+    ELSEIF check_vdm_consumption(
+      src_c  = src_c
+      src_i  = src_i
+      name_c = name_c
+      name_i = name_i ) = abap_true.
       model_type = model_rap.
       business_entity = COND string(
         WHEN src_c IS NOT INITIAL
         THEN name_c
         ELSE name_i ).
     ELSE.
-      model_type      = model_na.
+      model_type = model_na.
       business_entity = name_c.
     ENDIF.
+
   ENDIF.
 
-  model        = model_type.
+  " Set output parameters
+  model = model_type.
   business_ent = business_entity.
 ENDMETHOD.
 
-
-  METHOD c_to_i.
+METHOD c_to_i.
     cds_i = cds_c.
     IF cds_i CP 'C_*'.
       REPLACE FIRST OCCURRENCE OF 'C_' IN cds_i WITH 'I_'.
@@ -459,48 +690,6 @@ ENDMETHOD.
     fpm_flag   = 'N/A'.
   ENDMETHOD.
 
-
-  METHOD detect_odata_version.
-    DATA: ver_root TYPE string,
-          ns_edmx  TYPE string.
-
-    FIND PCRE '<edmx:Edmx[^>]*Version="([^"]+)"[^>]*xmlns:edmx="([^"]+)"'
-      IN xml
-      SUBMATCHES ver_root ns_edmx.
-
-    IF sy-subrc = 0.
-      IF ver_root CP '4*'
-        OR ns_edmx CS 'docs.oasis-open.org/odata/ns/edmx'.
-        version = '4.0'.
-        RETURN.
-      ELSE.
-        version = '2.0'.
-        RETURN.
-      ENDIF.
-    ENDIF.
-
-    IF xml CS 'm:DataServiceVersion="2.0"'
-      OR xml CS 'DataServiceVersion="2.0"'.
-      version = '2.0'.
-      RETURN.
-    ENDIF.
-
-    FIND PCRE '<Schema[^>]*xmlns="([^"]+)"' IN xml
-      SUBMATCHES ns_edmx.
-    IF sy-subrc = 0.
-      IF ns_edmx CS 'docs.oasis-open.org/odata/ns/edm'.
-        version = '4.0'.
-        RETURN.
-      ELSEIF ns_edmx CS 'schemas.microsoft.com/ado/2008/09/edm'.
-        version = '2.0'.
-        RETURN.
-      ENDIF.
-    ENDIF.
-
-    version = '2.0'.
-  ENDMETHOD.
-
-
   METHOD get_manifest_json.
     DATA: client TYPE REF TO if_http_client,
           uri    TYPE string,
@@ -537,66 +726,6 @@ ENDMETHOD.
     ENDIF.
   ENDMETHOD.
 
-
-  METHOD get_metadata_xml.
-    DATA: root   TYPE string,
-          client TYPE REF TO if_http_client,
-          status TYPE i.
-
-    root = ||.
-    root = service_name.
-
-    cl_http_client=>create_by_destination(
-      EXPORTING
-        destination = 'NONE'
-      IMPORTING
-        client      = client
-      EXCEPTIONS
-        OTHERS      = 1 ).
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
-
-    client->request->set_header_field(
-      name  = '~request_method'
-      value = 'GET' ).
-    client->request->set_header_field(
-      name  = '~request_uri'
-      value = root && '$metadata' ).
-    client->send( ).
-    client->receive( ).
-
-    client->response->get_status( IMPORTING code = status ).
-    IF status = 200.
-      xml = client->response->get_cdata( ).
-    ENDIF.
-  ENDMETHOD.
-
-
-  METHOD guess_cds_c_from_metadata.
-    DATA first TYPE string.
-
-    FIND PCRE '<EntitySet[^>]*Name="([^"]+)"'
-      IN xml
-      SUBMATCHES first.
-
-    IF sy-subrc = 0.
-      IF first CP 'C_*' OR first CP '*TP'.
-        cds_c = first.
-        RETURN.
-      ENDIF.
-    ENDIF.
-
-    FIND PCRE '<EntitySet[^>]*Name="(C_[A-Za-z0-9_]+)"'
-      IN xml
-      SUBMATCHES cds_c.
-
-    IF sy-subrc <> 0.
-      cds_c = first.
-    ENDIF.
-  ENDMETHOD.
-
-
   METHOD read_ddl_source.
     data: ddlname_to_upper type string.
     ddlname_to_upper = ddlname.
@@ -606,7 +735,6 @@ ENDMETHOD.
       WHERE ddlname = @ddlname_to_upper
         AND as4local = 'A'.
   ENDMETHOD.
-
 
   METHOD read_input_csv.
     DATA: line        TYPE string,
