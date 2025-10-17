@@ -1,19 +1,19 @@
-class ZCL_FIORI_MODEL_ANALYZER definition
-  public
-  final
-  create public .
+CLASS zcl_fiori_model_analyzer DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  types:
-    BEGIN OF app,
+    TYPES:
+      BEGIN OF app,
         fiori_id     TYPE string,
         app_name     TYPE string,
         library_link TYPE string,
         bsp_name     TYPE string,
       END OF app .
-  types:
-    BEGIN OF result,
+    TYPES:
+      BEGIN OF result,
         fiori_id          TYPE string,
         app_name          TYPE string,
         library_link      TYPE string,
@@ -25,435 +25,540 @@ public section.
         business_entity   TYPE string,
         fpm_extended      TYPE string,
       END OF result .
-  types:
-    app_table TYPE STANDARD TABLE OF app WITH EMPTY KEY .
-  types:
-    result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY .
-  types:
-    string_table TYPE STANDARD TABLE OF string
-                   WITH NON-UNIQUE KEY table_line .
+    TYPES:
+      app_table TYPE STANDARD TABLE OF app WITH EMPTY KEY .
+    TYPES:
+      result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY .
+    TYPES:
+      string_table TYPE STANDARD TABLE OF string
+                     WITH NON-UNIQUE KEY table_line .
 
-  constants MODEL_RAP type STRING value 'RAP' ##NO_TEXT.
-  constants MODEL_BOPF type STRING value 'BOPF' ##NO_TEXT.
-  constants MODEL_NA type STRING value 'N/A' ##NO_TEXT.
+    CONSTANTS model_rap TYPE string VALUE 'RAP' ##NO_TEXT.
+    CONSTANTS model_bopf TYPE string VALUE 'BOPF' ##NO_TEXT.
+    CONSTANTS model_na TYPE string VALUE 'N/A' ##NO_TEXT.
 
-  class-methods RUN_COLLECT
-    importing
-      !INFILE type STRING
-      !IDS type STRING optional
-    returning
-      value(RESULT) type RESULT_TABLE .
-  class-methods RUN_COLLECT_FROM_STRING
-    importing
-      !CSV_CONTENT type STRING
-      !IDS type STRING optional
-    returning
-      value(RESULT) type RESULT_TABLE .
-  class-methods WRITE_OUTPUT_CSV
-    importing
-      !RES type RESULT_TABLE
-      !PATH type STRING .
-  class-methods WRITE_OUTPUT_JSON
-    importing
-      !RES type RESULT_TABLE
-      !PATH type STRING .
-private section.
+    CLASS-METHODS run_collect
+      IMPORTING
+        !infile       TYPE string
+        !ids          TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE result_table .
+    CLASS-METHODS run_collect_from_string
+      IMPORTING
+        !csv_content  TYPE string
+        !ids          TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE result_table .
+    CLASS-METHODS write_output_csv
+      IMPORTING
+        !res  TYPE result_table
+        !path TYPE string .
+    CLASS-METHODS write_output_json
+      IMPORTING
+        !res  TYPE result_table
+        !path TYPE string .
+  PRIVATE SECTION.
 
-  class-methods READ_INPUT_CSV_FROM_STRING
-    importing
-      !CSV_CONTENT type STRING
-      !IDS type STRING_TABLE optional
-    returning
-      value(RESULT) type APP_TABLE .
-  class-methods SPLIT_IDS
-    importing
-      !IDS type STRING
-    returning
-      value(RESULT) type STRING_TABLE .
-  class-methods READ_INPUT_CSV
-    importing
-      !PATH type STRING
-      !IDS type STRING_TABLE optional
-    returning
-      value(RESULT) type APP_TABLE .
-  class-methods ANALYZE_APP
-    importing
-      !APP type APP
-    returning
-      value(RESULT) type RESULT .
-  class-methods C_TO_I
-    importing
-      !CDS_C type STRING
-    returning
-      value(CDS_I) type STRING .
-  class-methods READ_DDL_SOURCE
-    importing
-      !DDLNAME type STRING
-    returning
-      value(SOURCE) type STRING .
-  class-methods GET_MANIFEST_JSON
-    importing
-      !BSP_NAME type STRING
-    returning
-      value(JSON) type STRING .
-  class-methods DETECT_FE_FPM
-    importing
-      !MANIFEST_JSON type STRING
-    exporting
-      !IS_FE type ABAP_BOOL
-      !FE_VERSION type STRING
-      !FPM_FLAG type STRING .
-  class-methods CLASSIFY
-    importing
-      !ODATA_VERSION type STRING
-      !NAME_C type STRING
-      !NAME_I type STRING
-      !SRC_C type STRING
-      !SRC_I type STRING
-    exporting
-      !MODEL type STRING
-      !BUSINESS_ENT type STRING .
-  class-methods SPLIT_CSV_LINE
-    importing
-      !LINE type STRING
-      !DELIM type C default ','
-      !QUOTE type C default '"'
-    returning
-      value(RESULT) type STRING_TABLE .
-  class-methods FIND_ALIAS
-    importing
-      !ENTITY type STRING
-      !SERVICE_BINDING type STRING
-    returning
-      value(NAME_C) type STRING .
-  " Aggiungi questi nuovi metodi privati nella sezione PRIVATE SECTION:
-class-methods INITIALIZE_RESULT
-  importing
-    !APP type APP
-  returning
-    value(RESULT) type RESULT.
+    CLASS-METHODS read_input_csv_from_string
+      IMPORTING
+        !csv_content  TYPE string
+        !ids          TYPE string_table OPTIONAL
+      RETURNING
+        VALUE(result) TYPE app_table .
+    CLASS-METHODS split_ids
+      IMPORTING
+        !ids          TYPE string
+      RETURNING
+        VALUE(result) TYPE string_table .
+    CLASS-METHODS read_input_csv
+      IMPORTING
+        !path         TYPE string
+        !ids          TYPE string_table OPTIONAL
+      RETURNING
+        VALUE(result) TYPE app_table .
+    CLASS-METHODS analyze_app
+      IMPORTING
+        !app          TYPE app
+      RETURNING
+        VALUE(result) TYPE result .
+    CLASS-METHODS c_to_i
+      IMPORTING
+        !cds_c       TYPE string
+      RETURNING
+        VALUE(cds_i) TYPE string .
+    CLASS-METHODS read_ddl_source
+      IMPORTING
+        !ddlname      TYPE string
+      RETURNING
+        VALUE(source) TYPE string .
+    CLASS-METHODS get_manifest_json
+      IMPORTING
+        !bsp_name   TYPE string
+      RETURNING
+        VALUE(json) TYPE string .
+    CLASS-METHODS detect_fe_fpm
+      IMPORTING
+        !manifest_json TYPE string
+      EXPORTING
+        !is_fe         TYPE abap_bool
+        !fe_version    TYPE string
+        !fpm_flag      TYPE string .
+    CLASS-METHODS classify
+      IMPORTING
+        !odata_version TYPE string
+        !name_c        TYPE string
+        !name_i        TYPE string
+        !src_c         TYPE string
+        !src_i         TYPE string
+      EXPORTING
+        !model         TYPE string
+        !business_ent  TYPE string .
+    CLASS-METHODS split_csv_line
+      IMPORTING
+        !line         TYPE string
+        !delim        TYPE c DEFAULT ','
+        !quote        TYPE c DEFAULT '"'
+      RETURNING
+        VALUE(result) TYPE string_table .
+    CLASS-METHODS find_alias
+      IMPORTING
+        !entity          TYPE string
+        !service_binding TYPE string
+      RETURNING
+        VALUE(name_c)    TYPE string .
 
-class-methods EXTRACT_SERVICE_INFO
-  importing
-    !DATASOURCE type ZCL_FIORI_MODEL_MANIFEST=>MAIN_DATASOURCE_INFO
-  changing
-    !RESULT type RESULT.
+    CLASS-METHODS initialize_result
+      IMPORTING
+        !app          TYPE app
+      RETURNING
+        VALUE(result) TYPE result.
 
-class-methods DETERMINE_ODATA_VERSION
-  importing
-    !SERVICE_NAME type STRING
-    !DATASOURCE type ZCL_FIORI_MODEL_MANIFEST=>MAIN_DATASOURCE_INFO
-  changing
-    !RESULT type RESULT
-  returning
-    value(CONTINUE_PROCESSING) type ABAP_BOOL.
+    CLASS-METHODS extract_service_info
+      IMPORTING
+        !datasource TYPE zcl_fiori_model_manifest=>main_datasource_info
+      CHANGING
+        !result     TYPE result.
 
-class-methods RESOLVE_CDS_VIEWS
-  importing
-    !ENTITY_SET type STRING
-    !SERVICE_NAME type STRING
-  exporting
-    !NAME_C type STRING
-    !NAME_I type STRING
-    !SRC_C type STRING
-    !SRC_I type STRING.
+    CLASS-METHODS determine_odata_version
+      IMPORTING
+        !service_name              TYPE string
+        !datasource                TYPE zcl_fiori_model_manifest=>main_datasource_info
+      CHANGING
+        !result                    TYPE result
+      RETURNING
+        VALUE(continue_processing) TYPE abap_bool.
 
-class-methods NORMALIZE_ENTITY_NAME
-  importing
-    !ENTITY_SET type STRING
-  returning
-    value(RESULT) type STRING.
-" Aggiungi questi metodi privati:
-class-methods CHECK_ROOT_VIEW_ENTITY
-  importing
-    !SRC_I type STRING
-    !SRC_C type STRING
-    !NAME_I type STRING
-    !NAME_C type STRING
-  exporting
-    !IS_ROOT type ABAP_BOOL
-    !ENTITY_NAME type STRING.
+    CLASS-METHODS resolve_cds_views
+      IMPORTING
+        !entity_set   TYPE string
+        !service_name TYPE string
+      EXPORTING
+        !name_c       TYPE string
+        !name_i       TYPE string
+        !src_c        TYPE string
+        !src_i        TYPE string.
 
-class-methods FIND_RAP_BO_ENTITY
-  importing
-    !SRC_C type STRING
-    !SRC_I type STRING
-    !NAME_C type STRING
-    !NAME_I type STRING
-  returning
-    value(ENTITY) type STRING.
+    CLASS-METHODS normalize_entity_name
+      IMPORTING
+        !entity_set   TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
 
-class-methods CHECK_BOPF_INDICATORS_V2
-  importing
-    !SRC_I type STRING
-    !SRC_C type STRING
-    !NAME_C type STRING
-    !NAME_I type STRING
-  exporting
-    !IS_BOPF type ABAP_BOOL
-    !ENTITY_NAME type STRING.
+    CLASS-METHODS check_root_view_entity
+      IMPORTING
+        !src_i       TYPE string
+        !src_c       TYPE string
+        !name_i      TYPE string
+        !name_c      TYPE string
+      EXPORTING
+        !is_root     TYPE abap_bool
+        !entity_name TYPE string.
 
-class-methods CHECK_VDM_CONSUMPTION
-  importing
-    !SRC_C type STRING
-    !SRC_I type STRING
-    !NAME_C type STRING
-    !NAME_I type STRING
-  returning
-    value(IS_VDM) type ABAP_BOOL.
+    CLASS-METHODS find_rap_bo_entity
+      IMPORTING
+        !src_c        TYPE string
+        !src_i        TYPE string
+        !name_c       TYPE string
+        !name_i       TYPE string
+      RETURNING
+        VALUE(entity) TYPE string.
+
+    CLASS-METHODS check_bopf_indicators_v2
+      IMPORTING
+        !src_i       TYPE string
+        !src_c       TYPE string
+        !name_c      TYPE string
+        !name_i      TYPE string
+      EXPORTING
+        !is_bopf     TYPE abap_bool
+        !entity_name TYPE string.
+
+    CLASS-METHODS check_vdm_consumption
+      IMPORTING
+        !src_c        TYPE string
+        !src_i        TYPE string
+        !name_c       TYPE string
+        !name_i       TYPE string
+      RETURNING
+        VALUE(is_vdm) TYPE abap_bool.
+
+
+    CLASS-METHODS extract_entity_from_routing
+      IMPORTING
+        !manifest_json     TYPE string
+      RETURNING
+        VALUE(entity_name) TYPE string.
 ENDCLASS.
 
 
 
 CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
-METHOD initialize_result.
-  result = VALUE result(
-    fiori_id          = app-fiori_id
-    app_name          = app-app_name
-    library_link      = app-library_link
-    main_service_name = ''
-    service_uri       = ''
-    programming_model = 'N/A'
-    business_entity   = ''
-    fpm_extended      = 'N/A' ).
-ENDMETHOD.
+
+  METHOD initialize_result.
+    result = VALUE result(
+      fiori_id          = app-fiori_id
+      app_name          = app-app_name
+      library_link      = app-library_link
+      main_service_name = ''
+      service_uri       = ''
+      programming_model = 'N/A'
+      business_entity   = ''
+      fpm_extended      = 'N/A' ).
+  ENDMETHOD.
 
 
-METHOD extract_service_info.
-  IF datasource-uri IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  result-service_uri = datasource-uri.
-
-  " Remove trailing slash if present
-  IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
-    result-service_uri = substring( 
-      val = result-service_uri 
-      len = strlen( result-service_uri ) - 1 ).
-  ENDIF.
-
-  " Remove everything after semicolon
-  SPLIT result-service_uri AT ';' INTO result-service_uri DATA(uri_params).
-
-  " Split URI into segments
-  SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
-
-  " Start from last segment and go backwards until finding a non-numeric one
-  LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
-    " Check if segment contains non-numeric characters
-    IF segment CN '0123456789'.
-      result-main_service_name = segment.
-      EXIT.
-    ENDIF.
-  ENDLOOP.
-ENDMETHOD.
-
-
-METHOD determine_odata_version.
-  DATA: segw_project TYPE /iwbep/i_sbd_sv-project,
-        service_definition TYPE string.
-
-  continue_processing = abap_true.
-
-  IF service_name IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  " Check if it's a SEGW project (OData V2)
-  SELECT SINGLE project
-    FROM /iwbep/i_sbd_sv
-    WHERE technical_name = @service_name
-    INTO @segw_project.
-
-  IF sy-subrc = 0.
-    result-odata_version = '2.0'.
-    result-segw_project  = segw_project.
-    RETURN.
-  ENDIF.
-
-  " Check if it's a service binding (OData V2)
-  IF datasource-odata_version = '2.0'.
-    SELECT SINGLE service_name
-      FROM srvb_service_details
-      INTO @service_definition
-      WHERE srvb_name = @service_name
-        AND version = 'A'.
-    
-    result-odata_version = '2.0'.
-    
-    IF sy-subrc NE 0.
-      " Probably deprecated app
-      continue_processing = abap_false.
+  METHOD extract_service_info.
+    IF datasource-uri IS INITIAL.
       RETURN.
     ENDIF.
-  ELSE.
-    " Default to OData V4
-    result-odata_version = '4.0'.
-  ENDIF.
-ENDMETHOD.
 
+    result-service_uri = datasource-uri.
 
-METHOD normalize_entity_name.
-  result = entity_set.
-
-  " For analytical apps / CDS parameterized view
-  " Check if it ends with 'Results' and remove it
-  IF result CP '*Results'.
-    REPLACE FIRST OCCURRENCE OF REGEX 'Results$' IN result WITH ''.
-  ENDIF.
-ENDMETHOD.
-
-
-METHOD resolve_cds_views.
-  DATA: normalized_entity TYPE string.
-
-  " Normalize entity name (remove 'Results' suffix if present)
-  normalized_entity = normalize_entity_name( entity_set ).
-  
-  name_c = normalized_entity.
-  name_i = c_to_i( name_c ).
-  
-  " Try to read DDL sources
-  src_i = read_ddl_source( name_i ).
-  src_c = read_ddl_source( name_c ).
-
-  " If sources not found, search for alias
-  IF src_i IS INITIAL AND src_c IS INITIAL.
-    name_c = find_alias( 
-      service_binding = service_name 
-      entity = entity_set ).
-    
-    IF name_c IS NOT INITIAL.
-      name_i = c_to_i( name_c ).
-      src_i = read_ddl_source( name_i ).
-      src_c = read_ddl_source( name_c ).
-    ELSE.
-      CLEAR: name_c, name_i.
+    " Remove trailing slash if present
+    IF result-service_uri CP '*/' AND strlen( result-service_uri ) > 1.
+      result-service_uri = substring(
+        val = result-service_uri
+        len = strlen( result-service_uri ) - 1 ).
     ENDIF.
-  ENDIF.
-ENDMETHOD.
+
+    " Remove everything after semicolon
+    SPLIT result-service_uri AT ';' INTO result-service_uri DATA(uri_params).
+
+    " Split URI into segments
+    SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
+
+    " Start from last segment and go backwards until finding a non-numeric one
+    LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
+      " Check if segment contains non-numeric characters
+      IF segment CN '0123456789'.
+        result-main_service_name = segment.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
 
 
-" Metodo ANALYZE_APP refactorizzato:
-METHOD analyze_app.
-  DATA: manifest_json TYPE string,
-        manifest      TYPE REF TO zcl_fiori_model_manifest,
-        datasource    TYPE zcl_fiori_model_manifest=>main_datasource_info,
-        entity_set    TYPE string,
-        name_c        TYPE string,
-        name_i        TYPE string,
-        src_c         TYPE string,
-        src_i         TYPE string.
+  METHOD determine_odata_version.
+    DATA: segw_project       TYPE /iwbep/i_sbd_sv-project,
+          service_name_srv   TYPE /IWBEP/SBDM_PROJECT,
+          service_definition TYPE string.
 
-  " Initialize result structure
-  result = initialize_result( app ).
+    continue_processing = abap_true.
 
-  " Early exit if no BSP name
-  CHECK app-bsp_name IS NOT INITIAL.
+    IF service_name IS INITIAL.
+      RETURN.
+    ENDIF.
 
-  " Get manifest JSON
-  manifest_json = get_manifest_json( app-bsp_name ).
-  
-  " Early exit if manifest not found (app doesn't exist in this system)
-  CHECK manifest_json IS NOT INITIAL.
+    " Check if it's a SEGW project (OData V2)
+    SELECT SINGLE project
+      FROM /iwbep/i_sbd_sv
+      WHERE technical_name = @service_name
+      INTO @segw_project.
 
-  " Parse manifest and extract datasource info
-  TRY.
-      CREATE OBJECT manifest
-        EXPORTING
-          manifest_json = manifest_json.
+    IF sy-subrc = 0.
+      result-odata_version = '2.0'.
+      result-segw_project  = segw_project.
+      RETURN.
+    ELSE.
+      "if not found try to search replacing _SRV
+      service_name_srv = service_name.
+      REPLACE '_SRV' WITH '' INTO service_name_srv.
+      IF sy-subrc =  0.
+        SELECT SINGLE project
+          FROM /iwbep/i_sbd_sv
+          WHERE project = @service_name_srv
+          INTO @segw_project.
+        IF sy-subrc = 0.
+          result-odata_version = '2.0'.
+          result-segw_project  = segw_project.
+          RETURN.
+        ENDIF.
+      ENDIF.
+    ENDIF.
 
-      datasource = manifest->get_main_datasource( ).
-      extract_service_info(
-        EXPORTING datasource = datasource
-        CHANGING result = result ).
+    " Check if it's a service binding (OData V2)
+    IF datasource-odata_version = '2.0'.
+      SELECT SINGLE service_name
+        FROM srvb_service_details
+        INTO @service_definition
+        WHERE srvb_name = @service_name
+          AND version = 'A'.
 
-      entity_set = manifest->get_primary_entityset( ).
+      result-odata_version = '2.0'.
 
-    CATCH cx_root.
-      " If manifest parsing fails, clear result and exit
+      IF sy-subrc NE 0.
+        " Probably deprecated app
+        continue_processing = abap_false.
+        RETURN.
+      ENDIF.
+    ELSE.
+      " Default to OData V4
+      result-odata_version = '4.0'.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD normalize_entity_name.
+    result = entity_set.
+
+    " For analytical apps / CDS parameterized view
+    " Check if it ends with 'Results' and remove it
+    IF result CP '*Results'.
+      REPLACE FIRST OCCURRENCE OF REGEX 'Results$' IN result WITH ''.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD resolve_cds_views.
+    DATA: normalized_entity TYPE string.
+
+    " Normalize entity name (remove 'Results' suffix if present)
+    normalized_entity = normalize_entity_name( entity_set ).
+
+    name_c = normalized_entity.
+    name_i = c_to_i( name_c ).
+
+    " Try to read DDL sources
+    src_i = read_ddl_source( name_i ).
+    src_c = read_ddl_source( name_c ).
+
+    " If sources not found, search for alias
+    IF src_i IS INITIAL AND src_c IS INITIAL.
+      name_c = find_alias(
+        service_binding = service_name
+        entity = entity_set ).
+
+      IF name_c IS NOT INITIAL.
+        name_i = c_to_i( name_c ).
+        src_i = read_ddl_source( name_i ).
+        src_c = read_ddl_source( name_c ).
+      ELSE.
+        CLEAR: name_c, name_i.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD analyze_app.
+    DATA: manifest_json TYPE string,
+          manifest      TYPE REF TO zcl_fiori_model_manifest,
+          datasource    TYPE zcl_fiori_model_manifest=>main_datasource_info,
+          entity_set    TYPE string,
+          name_c        TYPE string,
+          name_i        TYPE string,
+          src_c         TYPE string,
+          src_i         TYPE string.
+
+    " Initialize result structure
+    result = initialize_result( app ).
+
+    " Early exit if no BSP name
+    CHECK app-bsp_name IS NOT INITIAL.
+
+    " Get manifest JSON
+    manifest_json = get_manifest_json( app-bsp_name ).
+
+    " Early exit if manifest not found (app doesn't exist in this system)
+    IF manifest_json IS INITIAL.
+      "if manifest not found, the fiori app doesn't exist in this s4 system
       CLEAR result.
       RETURN.
-  ENDTRY.
+    ENDIF.
 
-  " Determine OData version and SEGW project
-  DATA(continue) = determine_odata_version(
-    EXPORTING
-      service_name = result-main_service_name
-      datasource   = datasource
-    CHANGING
-      result = result ).
+    " Parse manifest and extract datasource info
+    TRY.
+        CREATE OBJECT manifest
+          EXPORTING
+            manifest_json = manifest_json.
 
-  " Exit if deprecated app detected
-  CHECK continue = abap_true.
+        datasource = manifest->get_main_datasource( ).
+        extract_service_info(
+          EXPORTING datasource = datasource
+          CHANGING result = result ).
 
-  " Resolve CDS views (C and I views)
-  resolve_cds_views(
-    EXPORTING
-      entity_set   = entity_set
-      service_name = result-main_service_name
-    IMPORTING
-      name_c = name_c
-      name_i = name_i
-      src_c  = src_c
-      src_i  = src_i ).
+        entity_set = manifest->get_primary_entityset( ).
 
-  " If CDS views not found, determine programming model and exit
-  IF name_c IS INITIAL.
-    result-programming_model = COND string(
-      WHEN result-odata_version = '4.0'
-      THEN model_rap
-      ELSE model_na ).
-    RETURN.
-  ENDIF.
+        " Fallback: if entity_set is empty, try to extract it from routing patterns
+        IF entity_set IS INITIAL.
+          entity_set = extract_entity_from_routing( manifest_json ).
+        ENDIF.
 
-  " Classify programming model and business entity
-  classify(
-    EXPORTING
-      odata_version = result-odata_version
-      name_c        = name_c
-      name_i        = name_i
-      src_c         = src_c
-      src_i         = src_i
-    IMPORTING
-      model        = result-programming_model
-      business_ent = result-business_entity ).
+      CATCH cx_root.
+        " If manifest parsing fails, clear result and exit
+        CLEAR result.
+        RETURN.
+    ENDTRY.
 
-  " Detect Fiori Elements and FPM extensions
-  detect_fe_fpm(
-    EXPORTING
-      manifest_json = manifest_json
-    IMPORTING
-      fpm_flag = result-fpm_extended ).
+    " Determine OData version and SEGW project
+    DATA(odatafound) = determine_odata_version(
+      EXPORTING
+        service_name = result-main_service_name
+        datasource   = datasource
+      CHANGING
+        result = result ).
 
-ENDMETHOD.
+    " Exit if deprecated app detected
+    CHECK odatafound = abap_true OR entity_set IS NOT INITIAL.
 
-METHOD check_root_view_entity.
-  is_root = abap_false.
-  
-  IF src_i CS 'define root view entity'.
-    is_root = abap_true.
-    entity_name = name_i.
-  ELSEIF src_c CS 'define root view entity'.
-    is_root = abap_true.
-    entity_name = name_c.
-  ELSE.
-    entity_name = COND string(
-      WHEN src_i IS NOT INITIAL
-      THEN name_i
-      ELSE name_c ).
-  ENDIF.
-ENDMETHOD.
+    " Resolve CDS views (C and I views)
+    resolve_cds_views(
+      EXPORTING
+        entity_set   = entity_set
+        service_name = result-main_service_name
+      IMPORTING
+        name_c = name_c
+        name_i = name_i
+        src_c  = src_c
+        src_i  = src_i ).
+
+    " If CDS views not found, determine programming model and exit
+    IF name_c IS INITIAL.
+      result-programming_model = COND string(
+        WHEN result-odata_version = '4.0'
+        THEN model_rap
+        ELSE model_na ).
+      RETURN.
+    ENDIF.
+
+    " Classify programming model and business entity
+    classify(
+      EXPORTING
+        odata_version = result-odata_version
+        name_c        = name_c
+        name_i        = name_i
+        src_c         = src_c
+        src_i         = src_i
+      IMPORTING
+        model        = result-programming_model
+        business_ent = result-business_entity ).
+
+    " Detect Fiori Elements and FPM extensions
+    detect_fe_fpm(
+      EXPORTING
+        manifest_json = manifest_json
+      IMPORTING
+        fpm_flag = result-fpm_extended ).
+
+  ENDMETHOD.
 
 
-METHOD find_rap_bo_entity.
-  DATA: src_to_check TYPE string,
-        entity_temp TYPE string.
+  METHOD check_root_view_entity.
+    is_root = abap_false.
 
-  CLEAR entity.
+    IF src_i CS 'define root view entity'.
+      is_root = abap_true.
+      entity_name = name_i.
+    ELSEIF src_c CS 'define root view entity'.
+      is_root = abap_true.
+      entity_name = name_c.
+    ELSE.
+      entity_name = COND string(
+        WHEN src_i IS NOT INITIAL
+        THEN name_i
+        ELSE name_c ).
+    ENDIF.
+  ENDMETHOD.
 
+
+  METHOD find_rap_bo_entity.
+    DATA: src_to_check TYPE string,
+          entity_temp  TYPE string.
+
+    CLEAR entity.
+
+    src_to_check = COND string(
+      WHEN src_c IS NOT INITIAL
+      THEN src_c
+      ELSE src_i ).
+
+    CHECK src_to_check IS NOT INITIAL.
+
+    " Look for 'as projection on R_' pattern
+    FIND PCRE 'projection\s+on\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+      SUBMATCHES entity_temp IGNORING CASE.
+
+    IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+      entity = entity_temp.
+      RETURN.
+    ENDIF.
+
+    " Try alternative pattern 'from R_'
+    FIND PCRE 'from\s+(R_[A-Za-z0-9_]+)' IN src_to_check
+      SUBMATCHES entity_temp IGNORING CASE.
+
+    IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+      entity = entity_temp.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD check_bopf_indicators_v2.
+    is_bopf = abap_false.
+    CLEAR entity_name.
+
+    " Check for explicit BOPF annotation
+    IF src_i CS '@ObjectModel.modelCategory: #BOPF'
+      OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
+      is_bopf = abap_true.
+      entity_name = COND string(
+        WHEN src_i IS NOT INITIAL
+        THEN name_i
+        ELSE name_c ).
+      RETURN.
+    ENDIF.
+
+    " Check for transactional processing delegation pattern
+    CHECK src_c CS 'transactionalProcessingDelegated'.
+    CHECK name_c CP 'C_*' AND src_c IS NOT INITIAL.
+
+    DATA: i_ref     TYPE string,
+          src_i_ref TYPE string.
+
+    FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
+      SUBMATCHES i_ref IGNORING CASE.
+
+    CHECK sy-subrc = 0 AND i_ref IS NOT INITIAL.
+
+    src_i_ref = read_ddl_source( i_ref ).
+
+    IF src_i_ref CS 'transactionalProcessingEnabled'
+      OR src_i_ref CS 'writeDraftPersistence'.
+      is_bopf = abap_true.
+      entity_name = i_ref.
+    ENDIF.
+  ENDMETHOD.
+
+
+METHOD check_vdm_consumption.
+  DATA: src_to_check     TYPE string,
+        has_vdm_anno     TYPE abap_bool,
+        has_metadata_ext TYPE abap_bool,
+        has_c_naming     TYPE abap_bool.
+
+  is_vdm = abap_false.
+
+  " Determine which source to check
   src_to_check = COND string(
     WHEN src_c IS NOT INITIAL
     THEN src_c
@@ -461,186 +566,175 @@ METHOD find_rap_bo_entity.
 
   CHECK src_to_check IS NOT INITIAL.
 
-  " Look for 'as projection on R_' pattern
-  FIND PCRE 'projection\s+on\s+(R_[A-Za-z0-9_]+)' IN src_to_check
-    SUBMATCHES entity_temp IGNORING CASE.
+  " ========================================
+  " CHECK 1: VDM annotation (flexible pattern for spacing)
+  " ========================================
+  FIND PCRE '@VDM\.viewType\s*:\s*#CONSUMPTION'
+    IN src_to_check
+    IGNORING CASE.
 
-  IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
-    entity = entity_temp.
-    RETURN.
-  ENDIF.
-
-  " Try alternative pattern 'from R_'
-  FIND PCRE 'from\s+(R_[A-Za-z0-9_]+)' IN src_to_check
-    SUBMATCHES entity_temp IGNORING CASE.
-
-  IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
-    entity = entity_temp.
-  ENDIF.
-ENDMETHOD.
-
-
-METHOD check_bopf_indicators_v2.
-  is_bopf = abap_false.
-  CLEAR entity_name.
-
-  " Check for explicit BOPF annotation
-  IF src_i CS '@ObjectModel.modelCategory: #BOPF'
-    OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
-    is_bopf = abap_true.
-    entity_name = COND string(
-      WHEN src_i IS NOT INITIAL
-      THEN name_i
-      ELSE name_c ).
-    RETURN.
-  ENDIF.
-
-  " Check for transactional processing delegation pattern
-  CHECK src_c CS 'transactionalProcessingDelegated'.
-  CHECK name_c CP 'C_*' AND src_c IS NOT INITIAL.
-
-  DATA: i_ref TYPE string,
-        src_i_ref TYPE string.
-
-  FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
-    SUBMATCHES i_ref IGNORING CASE.
-
-  CHECK sy-subrc = 0 AND i_ref IS NOT INITIAL.
-
-  src_i_ref = read_ddl_source( i_ref ).
-  
-  IF src_i_ref CS 'transactionalProcessingEnabled'
-    OR src_i_ref CS 'writeDraftPersistence'.
-    is_bopf = abap_true.
-    entity_name = i_ref.
-  ENDIF.
-ENDMETHOD.
-
-
-METHOD check_vdm_consumption.
-  is_vdm = abap_false.
-
-  " Check for VDM consumption annotation
-  IF src_c CS '@VDM.viewType: #CONSUMPTION'
-    OR src_i CS '@VDM.viewType: #CONSUMPTION'.
+  IF sy-subrc = 0.
     is_vdm = abap_true.
     RETURN.
   ENDIF.
 
-  " Check for metadata extensions with C_ naming pattern
-  IF ( src_c CS '@Metadata.allowExtensions'
-    OR src_i CS '@Metadata.allowExtensions' )
+  " ========================================
+  " CHECK 2: Virtual elements with calculated by (RAP pattern)
+  " ========================================
+  IF src_to_check CS 'virtualElement'
+    AND src_to_check CS 'virtualElementCalculatedBy'.
+    is_vdm = abap_true.
+    RETURN.
+  ENDIF.
+
+  " ========================================
+  " CHECK 3: CDS with parameters and VDM-style annotations
+  " ========================================
+  IF ( src_to_check CS 'with parameters'
+    OR src_to_check CS '@Environment.systemField' )
     AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
     is_vdm = abap_true.
+    RETURN.
   ENDIF.
+
+  " ========================================
+  " CHECK 4: Metadata extensions + C_ naming (common VDM pattern)
+  " ========================================
+  has_metadata_ext = xsdbool( src_to_check CS '@Metadata.allowExtensions' ).
+  has_c_naming = xsdbool( name_c CP 'C_*' OR name_i CP 'C_*' ).
+
+  IF has_metadata_ext = abap_true AND has_c_naming = abap_true.
+    is_vdm = abap_true.
+    RETURN.
+  ENDIF.
+
+  " ========================================
+  " CHECK 5: UI annotations + AccessControl (Fiori-ready views)
+  " ========================================
+  IF ( src_to_check CS '@UI.' OR src_to_check CS '@Search.searchable' )
+    AND src_to_check CS '@AccessControl.authorizationCheck'
+    AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
+    is_vdm = abap_true.
+    RETURN.
+  ENDIF.
+
+  " ========================================
+  " CHECK 6: ObjectModel usage type (VDM indicator)
+  " ========================================
+  IF src_to_check CS '@ObjectModel.usageType'.
+    is_vdm = abap_true.
+    RETURN.
+  ENDIF.
+
 ENDMETHOD.
 
 
-METHOD classify.
-  DATA: business_entity TYPE string,
-        model_type      TYPE string,
-        is_root         TYPE abap_bool,
-        r_entity        TYPE string.
+  METHOD classify.
+    DATA: business_entity TYPE string,
+          model_type      TYPE string,
+          is_root         TYPE abap_bool,
+          r_entity        TYPE string.
 
-  CLEAR: model, business_ent.
+    CLEAR: model, business_ent.
 
-  " ============================================================
-  " OData V4 Classification
-  " ============================================================
-  IF odata_version = '4.0'.
-    
-    " Check for root view entity
-    check_root_view_entity(
-      EXPORTING
-        src_i  = src_i
-        src_c  = src_c
-        name_i = name_i
-        name_c = name_c
-      IMPORTING
-        is_root     = is_root
-        entity_name = business_entity ).
+    " ============================================================
+    " OData V4 Classification
+    " ============================================================
+    IF odata_version = '4.0'.
 
-    IF is_root = abap_true.
-      model_type = model_rap.
-    ENDIF.
+      " Check for root view entity
+      check_root_view_entity(
+        EXPORTING
+          src_i  = src_i
+          src_c  = src_c
+          name_i = name_i
+          name_c = name_c
+        IMPORTING
+          is_root     = is_root
+          entity_name = business_entity ).
 
-    " Check if it's a projection on R_ entity (RAP BO)
-    IF business_entity IS NOT INITIAL.
-      r_entity = find_rap_bo_entity(
-        src_c  = src_c
-        src_i  = src_i
-        name_c = name_c
-        name_i = name_i ).
-
-      IF r_entity IS NOT INITIAL.
-        business_entity = r_entity.
+      IF is_root = abap_true.
         model_type = model_rap.
       ENDIF.
-    ENDIF.
 
-  " ============================================================
-  " OData V2 Classification
-  " ============================================================
-  ELSE.
-    
-    DATA: is_bopf TYPE abap_bool,
-          bopf_entity TYPE string.
+      " Check if it's a projection on R_ entity (RAP BO)
+      IF business_entity IS NOT INITIAL.
+        r_entity = find_rap_bo_entity(
+          src_c  = src_c
+          src_i  = src_i
+          name_c = name_c
+          name_i = name_i ).
 
-    " Check for BOPF indicators
-    check_bopf_indicators_v2(
-      EXPORTING
-        src_i  = src_i
-        src_c  = src_c
-        name_c = name_c
-        name_i = name_i
-      IMPORTING
-        is_bopf     = is_bopf
-        entity_name = bopf_entity ).
+        IF r_entity IS NOT INITIAL.
+          business_entity = r_entity.
+          model_type = model_rap.
+        ENDIF.
+      ENDIF.
 
-    IF is_bopf = abap_true.
-      model_type = model_bopf.
-      business_entity = bopf_entity.
-      model = model_type.
-      business_ent = business_entity.
-      RETURN.
-    ENDIF.
-
-    " Check for root view entity (RAP in V2)
-    check_root_view_entity(
-      EXPORTING
-        src_i  = src_i
-        src_c  = src_c
-        name_i = name_i
-        name_c = name_c
-      IMPORTING
-        is_root     = is_root
-        entity_name = business_entity ).
-
-    IF is_root = abap_true.
-      model_type = model_rap.
-    ELSEIF check_vdm_consumption(
-      src_c  = src_c
-      src_i  = src_i
-      name_c = name_c
-      name_i = name_i ) = abap_true.
-      model_type = model_rap.
-      business_entity = COND string(
-        WHEN src_c IS NOT INITIAL
-        THEN name_c
-        ELSE name_i ).
+      " ============================================================
+      " OData V2 Classification
+      " ============================================================
     ELSE.
-      model_type = model_na.
-      business_entity = name_c.
+
+      DATA: is_bopf     TYPE abap_bool,
+            bopf_entity TYPE string.
+
+      " Check for BOPF indicators
+      check_bopf_indicators_v2(
+        EXPORTING
+          src_i  = src_i
+          src_c  = src_c
+          name_c = name_c
+          name_i = name_i
+        IMPORTING
+          is_bopf     = is_bopf
+          entity_name = bopf_entity ).
+
+      IF is_bopf = abap_true.
+        model_type = model_bopf.
+        business_entity = bopf_entity.
+        model = model_type.
+        business_ent = business_entity.
+        RETURN.
+      ENDIF.
+
+      " Check for root view entity (RAP in V2)
+      check_root_view_entity(
+        EXPORTING
+          src_i  = src_i
+          src_c  = src_c
+          name_i = name_i
+          name_c = name_c
+        IMPORTING
+          is_root     = is_root
+          entity_name = business_entity ).
+
+      IF is_root = abap_true.
+        model_type = model_rap.
+      ELSEIF check_vdm_consumption(
+        src_c  = src_c
+        src_i  = src_i
+        name_c = name_c
+        name_i = name_i ) = abap_true.
+        model_type = model_rap.
+        business_entity = COND string(
+          WHEN src_c IS NOT INITIAL
+          THEN name_c
+          ELSE name_i ).
+      ELSE.
+        model_type = model_na.
+        business_entity = name_c.
+      ENDIF.
+
     ENDIF.
 
-  ENDIF.
+    " Set output parameters
+    model = model_type.
+    business_ent = business_entity.
+  ENDMETHOD.
 
-  " Set output parameters
-  model = model_type.
-  business_ent = business_entity.
-ENDMETHOD.
 
-METHOD c_to_i.
+  METHOD c_to_i.
     cds_i = cds_c.
     IF cds_i CP 'C_*'.
       REPLACE FIRST OCCURRENCE OF 'C_' IN cds_i WITH 'I_'.
@@ -690,6 +784,7 @@ METHOD c_to_i.
     fpm_flag   = 'N/A'.
   ENDMETHOD.
 
+
   METHOD get_manifest_json.
     DATA: client TYPE REF TO if_http_client,
           uri    TYPE string,
@@ -726,8 +821,9 @@ METHOD c_to_i.
     ENDIF.
   ENDMETHOD.
 
+
   METHOD read_ddl_source.
-    data: ddlname_to_upper type string.
+    DATA: ddlname_to_upper TYPE string.
     ddlname_to_upper = ddlname.
     TRANSLATE ddlname_to_upper TO UPPER CASE.
     SELECT SINGLE source FROM ddddlsrc
@@ -735,6 +831,7 @@ METHOD c_to_i.
       WHERE ddlname = @ddlname_to_upper
         AND as4local = 'A'.
   ENDMETHOD.
+
 
   METHOD read_input_csv.
     DATA: line        TYPE string,
@@ -992,7 +1089,7 @@ METHOD c_to_i.
     DATA: service_definition TYPE srvb_name,
           source             TYPE string,
           source_lines       TYPE TABLE OF string,
-          service_bnd type SRVB_NAME.
+          service_bnd        TYPE srvb_name.
     service_bnd = service_binding.
     TRANSLATE service_bnd TO UPPER CASE.
 
@@ -1049,122 +1146,280 @@ METHOD c_to_i.
   ENDMETHOD.
 
 
-METHOD read_input_csv_from_string.
-  DATA: lines       TYPE TABLE OF string,
-        line        TYPE string,
-        cols        TYPE string_table,
-        idx_id      TYPE i VALUE 0,
-        idx_appname TYPE i VALUE 0,
-        idx_link    TYPE i VALUE 0,
-        idx_bsp     TYPE i VALUE 0,
-        name        TYPE string,
-        z_bom       TYPE string,
-        z_zwsp      TYPE string,
-        line_num    TYPE i VALUE 0.
+  METHOD read_input_csv_from_string.
+    DATA: lines       TYPE TABLE OF string,
+          line        TYPE string,
+          cols        TYPE string_table,
+          idx_id      TYPE i VALUE 0,
+          idx_appname TYPE i VALUE 0,
+          idx_link    TYPE i VALUE 0,
+          idx_bsp     TYPE i VALUE 0,
+          name        TYPE string,
+          z_bom       TYPE string,
+          z_zwsp      TYPE string,
+          line_num    TYPE i VALUE 0.
 
-  " Split content into lines
-  SPLIT csv_content AT cl_abap_char_utilities=>newline INTO TABLE lines.
+    " Split content into lines
+    SPLIT csv_content AT cl_abap_char_utilities=>newline INTO TABLE lines.
 
-  IF lines IS INITIAL.
-    RETURN.
-  ENDIF.
+    IF lines IS INITIAL.
+      RETURN.
+    ENDIF.
 
-  " Read header
-  READ TABLE lines INDEX 1 INTO line.
-  IF sy-subrc <> 0 OR line IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  cols = split_csv_line( line ).
-  IF cols IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  z_bom  = cl_abap_conv_in_ce=>uccp( 'FEFF' ).
-  z_zwsp = cl_abap_conv_in_ce=>uccp( '200B' ).
-
-  " Parse header columns
-  DO lines( cols ) TIMES.
-    name = cols[ sy-index ].
-    TRANSLATE name TO UPPER CASE.
-
-    REPLACE ALL OCCURRENCES OF z_bom  IN name WITH ''.
-    REPLACE ALL OCCURRENCES OF z_zwsp IN name WITH ''.
-    REPLACE ALL OCCURRENCES OF REGEX '[[:cntrl:]]' IN name WITH ''.
-
-    CASE name.
-      WHEN 'FIORIID'.
-        idx_id = sy-index.
-      WHEN 'APPNAME'.
-        idx_appname = sy-index.
-      WHEN 'LINK'.
-        idx_link = sy-index.
-      WHEN 'BSPNAME'.
-        idx_bsp = sy-index.
-    ENDCASE.
-  ENDDO.
-
-  " Process data lines
-  LOOP AT lines INTO line FROM 2.
-    IF line IS INITIAL.
-      CONTINUE.
+    " Read header
+    READ TABLE lines INDEX 1 INTO line.
+    IF sy-subrc <> 0 OR line IS INITIAL.
+      RETURN.
     ENDIF.
 
     cols = split_csv_line( line ).
-
     IF cols IS INITIAL.
-      CONTINUE.
+      RETURN.
     ENDIF.
 
-    DATA(id) = COND string(
-      WHEN idx_id > 0 AND idx_id <= lines( cols )
-      THEN cols[ idx_id ]
-      ELSE '' ).
-    DATA(app_name) = COND string(
-      WHEN idx_appname > 0 AND idx_appname <= lines( cols )
-      THEN cols[ idx_appname ]
-      ELSE '' ).
-    DATA(link) = COND string(
-      WHEN idx_link > 0 AND idx_link <= lines( cols )
-      THEN cols[ idx_link ]
-      ELSE '' ).
-    DATA(bsp) = COND string(
-      WHEN idx_bsp > 0 AND idx_bsp <= lines( cols )
-      THEN cols[ idx_bsp ]
-      ELSE '' ).
+    z_bom  = cl_abap_conv_in_ce=>uccp( 'FEFF' ).
+    z_zwsp = cl_abap_conv_in_ce=>uccp( '200B' ).
 
-    IF id IS INITIAL.
-      CONTINUE.
-    ENDIF.
+    " Parse header columns
+    DO lines( cols ) TIMES.
+      name = cols[ sy-index ].
+      TRANSLATE name TO UPPER CASE.
 
-    IF ids IS SUPPLIED AND ids IS NOT INITIAL.
-      READ TABLE ids WITH KEY table_line = id
-        TRANSPORTING NO FIELDS.
-      IF sy-subrc <> 0.
+      REPLACE ALL OCCURRENCES OF z_bom  IN name WITH ''.
+      REPLACE ALL OCCURRENCES OF z_zwsp IN name WITH ''.
+      REPLACE ALL OCCURRENCES OF REGEX '[[:cntrl:]]' IN name WITH ''.
+
+      CASE name.
+        WHEN 'FIORIID'.
+          idx_id = sy-index.
+        WHEN 'APPNAME'.
+          idx_appname = sy-index.
+        WHEN 'LINK'.
+          idx_link = sy-index.
+        WHEN 'BSPNAME'.
+          idx_bsp = sy-index.
+      ENDCASE.
+    ENDDO.
+
+    " Process data lines
+    LOOP AT lines INTO line FROM 2.
+      IF line IS INITIAL.
         CONTINUE.
+      ENDIF.
+
+      cols = split_csv_line( line ).
+
+      IF cols IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      DATA(id) = COND string(
+        WHEN idx_id > 0 AND idx_id <= lines( cols )
+        THEN cols[ idx_id ]
+        ELSE '' ).
+      DATA(app_name) = COND string(
+        WHEN idx_appname > 0 AND idx_appname <= lines( cols )
+        THEN cols[ idx_appname ]
+        ELSE '' ).
+      DATA(link) = COND string(
+        WHEN idx_link > 0 AND idx_link <= lines( cols )
+        THEN cols[ idx_link ]
+        ELSE '' ).
+      DATA(bsp) = COND string(
+        WHEN idx_bsp > 0 AND idx_bsp <= lines( cols )
+        THEN cols[ idx_bsp ]
+        ELSE '' ).
+
+      IF id IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      IF ids IS SUPPLIED AND ids IS NOT INITIAL.
+        READ TABLE ids WITH KEY table_line = id
+          TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
+      APPEND VALUE app(
+        fiori_id     = id
+        app_name     = app_name
+        library_link = link
+        bsp_name     = bsp ) TO result.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD run_collect_from_string.
+    DATA(id_list) = split_ids( ids ).
+    DATA(apps)    = read_input_csv_from_string(
+                      csv_content = csv_content
+                      ids = id_list ).
+    result = VALUE #( ).
+    LOOP AT apps ASSIGNING FIELD-SYMBOL(<a>).
+      DATA(analyzed) = zcl_fiori_model_analyzer=>analyze_app( <a> ).
+      IF analyzed IS NOT INITIAL.
+        INSERT analyzed INTO TABLE result.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD extract_entity_from_routing.
+    DATA: entity_temp   TYPE string,
+          all_patterns  TYPE string_table,
+          pattern       TYPE string,
+          best_match    TYPE string,
+          match_score   TYPE i,
+          generic_names TYPE string_table.
+
+    CLEAR entity_name.
+    CHECK manifest_json IS NOT INITIAL.
+
+    " List of generic route names to exclude (extensible)
+    APPEND 'worklist' TO generic_names.
+    APPEND 'list' TO generic_names.
+    APPEND 'master' TO generic_names.
+    APPEND 'main' TO generic_names.
+    APPEND 'object' TO generic_names.
+    APPEND 'detail' TO generic_names.
+    APPEND 'item' TO generic_names.
+    APPEND 'display' TO generic_names.
+    APPEND 'edit' TO generic_names.
+    APPEND 'change' TO generic_names.
+    APPEND 'maintain' TO generic_names.
+    APPEND 'create' TO generic_names.
+    APPEND 'new' TO generic_names.
+    APPEND 'show' TO generic_names.
+    APPEND 'view' TO generic_names.
+    APPEND 'overview' TO generic_names.
+    APPEND 'home' TO generic_names.
+    APPEND 'start' TO generic_names.
+    APPEND 'landing' TO generic_names.
+
+    " ========================================
+    " STRATEGY 1: Search for entity with CDS naming convention (high priority)
+    " Pattern: C_* or I_* followed by / or ( or { or ?
+    " ========================================
+    FIND ALL OCCURRENCES OF PCRE
+      '"pattern"\s*:\s*"([CI]_[A-Za-z0-9_]+)(?:/|\(|\{|\?)'
+      IN manifest_json
+      RESULTS DATA(cds_matches)
+      IGNORING CASE.
+
+    LOOP AT cds_matches INTO DATA(match).
+      DATA(match_text) = manifest_json+match-offset(match-length).
+      FIND PCRE '([CI]_[A-Za-z0-9_]+)' IN match_text SUBMATCHES entity_temp.
+
+      IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+        " CDS entity found, has maximum priority
+        entity_name = entity_temp.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    " ========================================
+    " STRATEGY 2: Search in "object" or "detail" routes
+    " ========================================
+    DATA: target_routes TYPE string_table.
+    APPEND 'object' TO target_routes.
+    APPEND 'detail' TO target_routes.
+    APPEND 'item' TO target_routes.
+
+    LOOP AT target_routes INTO DATA(route_name).
+      " Build search pattern dynamically
+      DATA(search_pattern) = |"pattern"\\s*:\\s*"([^"]+)"[^| && |\}| && |\}]*"name"\\s*:\\s*"{ route_name }"|.
+
+      FIND PCRE search_pattern
+        IN manifest_json
+        SUBMATCHES pattern
+        IGNORING CASE.
+
+      IF sy-subrc = 0 AND pattern IS NOT INITIAL.
+        " Extract first part before / ( { or ?
+        FIND PCRE '^([A-Za-z][A-Za-z0-9_]*)(?:/|\(|\{|\?)'
+          IN pattern
+          SUBMATCHES entity_temp.
+
+        IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+          " Verify it's not a generic name
+          READ TABLE generic_names WITH KEY table_line = entity_temp
+            TRANSPORTING NO FIELDS.
+          IF sy-subrc <> 0.
+            entity_name = entity_temp.
+            RETURN.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    " ========================================
+    " STRATEGY 3: Search for any entity with parameters
+    " Generic pattern: EntityName/{param} or EntityName({param})
+    " ========================================
+    FIND ALL OCCURRENCES OF PCRE
+      '"pattern"\s*:\s*"([A-Z][A-Za-z0-9_]+)(?:/\{|\(\{)'
+      IN manifest_json
+      RESULTS DATA(generic_matches)
+      IGNORING CASE.
+
+    " Find best candidate (longest and not generic)
+    match_score = 0.
+    LOOP AT generic_matches INTO match.
+      match_text = manifest_json+match-offset(match-length).
+      FIND PCRE '([A-Z][A-Za-z0-9_]+)' IN match_text SUBMATCHES entity_temp.
+
+      IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+        " Skip generic names
+        READ TABLE generic_names WITH KEY table_line = to_lower( entity_temp )
+          TRANSPORTING NO FIELDS.
+        IF sy-subrc = 0.
+          CONTINUE.
+        ENDIF.
+
+        " Prefer longer entities (more specific)
+        IF strlen( entity_temp ) > match_score.
+          match_score = strlen( entity_temp ).
+          best_match = entity_temp.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    IF best_match IS NOT INITIAL.
+      entity_name = best_match.
+      RETURN.
+    ENDIF.
+
+    " ========================================
+    " STRATEGY 4: Search in sap.copilot (if present)
+    " ========================================
+    FIND PCRE '"whitelistedEntityTypes"\s*:\s*\[([^\]]+)\]'
+      IN manifest_json
+      SUBMATCHES DATA(entity_list)
+      IGNORING CASE.
+
+    IF sy-subrc = 0 AND entity_list IS NOT INITIAL.
+      " Search for first entity Type ending with "Type"
+      FIND PCRE '([A-Z][A-Za-z0-9_\.]+)Type'
+        IN entity_list
+        SUBMATCHES entity_temp.
+
+      IF sy-subrc = 0 AND entity_temp IS NOT INITIAL.
+        " Remove service prefix if present
+        " Example: "FAC_MANAGE_GLACCOUNT_SRV.C_GLAcctInChtAcctsTP"
+        SPLIT entity_temp AT '.' INTO DATA(service_prefix) entity_name.
+        IF entity_name IS INITIAL.
+          entity_name = entity_temp.
+        ENDIF.
+
+        " Remove "TP" suffix if present (was in Type)
+        IF entity_name CP '*TP'.
+          " Entity already correct
+        ENDIF.
+        RETURN.
       ENDIF.
     ENDIF.
 
-    APPEND VALUE app(
-      fiori_id     = id
-      app_name     = app_name
-      library_link = link
-      bsp_name     = bsp ) TO result.
-  ENDLOOP.
-ENDMETHOD.
-
-
-METHOD run_collect_from_string.
-  DATA(id_list) = split_ids( ids ).
-  DATA(apps)    = read_input_csv_from_string(
-                    csv_content = csv_content
-                    ids = id_list ).
-  result = VALUE #( ).
-  LOOP AT apps ASSIGNING FIELD-SYMBOL(<a>).
-    DATA(analyzed) = zcl_fiori_model_analyzer=>analyze_app( <a> ).
-    IF analyzed IS NOT INITIAL.
-      INSERT analyzed INTO TABLE result.
-    ENDIF.
-  ENDLOOP.
-ENDMETHOD.
+  ENDMETHOD.
 ENDCLASS.
