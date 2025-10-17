@@ -248,14 +248,24 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
     " Split URI into segments
     SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
 
-    " Start from last segment and go backwards until finding a non-numeric one
-    LOOP AT segments INTO DATA(segment) FROM lines( segments ) TO 1 STEP -1.
-      " Check if segment contains non-numeric characters
-      IF segment CN '0123456789'.
-        result-main_service_name = segment.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
+" Start from last segment and go backwards until finding a non-numeric one
+DATA: lines TYPE i,
+      index TYPE i,
+      segment TYPE string.
+
+lines = lines( segments ).
+
+DO lines TIMES.
+  index = lines - sy-index + 1.
+  READ TABLE segments INTO segment INDEX index.
+  IF sy-subrc = 0.
+    " Check if segment contains non-numeric characters
+    IF segment CN '0123456789'.
+      result-main_service_name = segment.
+      EXIT.
+    ENDIF.
+  ENDIF.
+ENDDO.
   ENDMETHOD.
 
 
