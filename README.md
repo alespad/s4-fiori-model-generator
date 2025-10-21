@@ -61,7 +61,7 @@ You can also download **ready-to-use CSV files** from the [Viewer Project](https
 | **Execute on Local or Server** | Choose execution mode |
 
 
-### 📤 Output
+### Output
 
 The report generates both **JSON** and **CSV** files, **JSON** can be:
 
