@@ -22,8 +22,8 @@ The analyzer reads each app’s `manifest.json`, cross-references it with DDL so
 
 ## Installation
 
-1. **Clone or download** this repository  
-2. **Import the ABAP objects** into your S/4HANA system using [abapGit](https://abapgit.org) or your preferred method  
+1. **Clone** this repository  
+2. **Import the ABAP objects** into your S/4HANA system using [abapGit](https://abapgit.org) 
 3. **Activate all objects**
 
 # Usage
@@ -63,7 +63,7 @@ You can also download **ready-to-use CSV files** from the [Viewer Project](https
 
 ### 📤 Output
 
-The report generates both **JSON** and **CSV** files, which can be:
+The report generates both **JSON** and **CSV** files, **JSON** can be:
 
 - **Visualized** locally using the [Viewer Application](https://github.com/alespad/s4-fiori-model-analyzer)  
  → See [*“Using Your Own Data”*](https://github.com/alespad/s4-fiori-model-analyzer?tab=readme-ov-file#using-your-own-data) section in the viewer repository.
