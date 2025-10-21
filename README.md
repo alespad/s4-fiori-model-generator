@@ -25,7 +25,7 @@ The analyzer reads each app’s `manifest.json`, cross-references it with DDL so
 1. **Clone or download** this repository  
 2. **Import the ABAP objects** into your S/4HANA system using [abapGit](https://abapgit.org) or your preferred method  
 3. **Activate all objects**
-
+--
 ## Usage (Standard SAP Fiori Apps)
 
 ### Report: `Z_FIORI_MODEL_GENERATOR`
@@ -49,7 +49,7 @@ The analyzer requires an input **CSV file** exported from the [SAP Fiori Apps Re
 
 ### Option 2: Use Pre-exported Data
 
-You can also download **ready-to-use CSV files** from the [Viewer Project](https://github.com/alespad/s4-fiori-model-analyzer/tree/main/docs/data).
+You can also download **ready-to-use CSV files** from the [Viewer Project](https://github.com/alespad/s4-fiori-model-analyzer/tree/main/docs/data). FioriLibraryExport_*.csv
 
 ### Report Parameters
 
@@ -72,7 +72,7 @@ The report generates both **JSON** and **CSV** files, which can be:
 
 ## Usage Analyzing Custom Fiori Apps
 Coming Soon - Support for analyzing custom BSP Fiori applications deployed on your system.
-
+--
 ## How it Works (Technical Overview)
 The analyzer uses two main ABAP classes to determine the programming model behind Fiori apps:
 ### Class ZCL_FIORI_MODEL_MANIFEST
