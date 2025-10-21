@@ -26,7 +26,7 @@ The analyzer reads each app’s `manifest.json`, cross-references it with DDL so
 2. **Import the ABAP objects** into your S/4HANA system using [abapGit](https://abapgit.org) or your preferred method  
 3. **Activate all objects**
 
-## Usage
+## Usage (Standard SAP Fiori Apps)
 
 ### Report: `Z_FIORI_MODEL_GENERATOR`
 
@@ -60,15 +60,18 @@ You can also download **ready-to-use CSV files** from the [Viewer Project](https
 | **Execute on Local or Server** | Choose execution mode |
 
 
-## 📤 Output
+### 📤 Output
 
 The report generates both **JSON** and **CSV** files, which can be:
 
 - **Visualized** locally using the [Viewer Application](https://github.com/alespad/s4-fiori-model-analyzer)  
-  → See *“Using Your Own Data”* section there  
+ → See [*“Using Your Own Data”*](https://github.com/alespad/s4-fiori-model-analyzer?tab=readme-ov-file#using-your-own-data) section in the viewer repository.
 - **Contributed** back to the main project via Pull Request  
   → Update `sources.json` and add your CSV/JSON files  
   → Help expand coverage for additional **S/4HANA releases**
+
+## Usage Analyzing Custom Fiori Apps
+Coming Soon - Support for analyzing custom BSP Fiori applications deployed on your system.
 
 ## How it Works (Technical Overview)
 The analyzer uses two main ABAP classes to determine the programming model behind Fiori apps:
@@ -96,8 +99,6 @@ This is the core engine that performs the classification. For each app, it:
 - Detects FPM extensions by searching for controller/view extensions in the manifest
 
 ## What's next
-
-- Generate data for custom BSP Fiori apps automatically  
 - Improve *N/A* classification logic  
 - Some SEGW Projects are not determined
 - Validate accuracy across different S/4HANA releases  
