@@ -2,10 +2,9 @@
 
 This repository contains the **ABAP generator** component of the [Fiori Programming Model Analyzer](https://github.com/alespad/s4-fiori-model-analyzer) project.
 
-🔍 **Related Viewer Repository:** [s4-fiori-model-analyzer](https://github.com/alespad/s4-fiori-model-analyzer)  
+
 📝 **SAP Community Blog Post:** [Is It RAP or BOPF? Fiori Programming Model Analyzer for S/4HANA](https://community.sap.com/)
 
----
 
 ## Overview
 
@@ -37,8 +36,6 @@ The analyzer reads each app’s `manifest.json`, cross-references it with DDL so
 
 The analyzer requires an input **CSV file** exported from the [SAP Fiori Apps Reference Library](https://fioriappslibrary.hana.ondemand.com/).
 
----
-
 ### Option 1: Export from SAP Fiori Library
 
 1. Go to the **SAP Fiori Apps Reference Library**  
@@ -54,13 +51,9 @@ The analyzer requires an input **CSV file** exported from the [SAP Fiori Apps Re
 > Column order doesn’t matter.  
 > OData service information is *not* required — it will be extracted automatically from the `manifest.json`.
 
----
-
 ### Option 2: Use Pre-exported Data
 
 You can also download **ready-to-use CSV files** from the [Viewer Project](https://github.com/alespad/s4-fiori-model-analyzer/tree/main/docs/data).
-
----
 
 ### Report Parameters
 
@@ -70,7 +63,6 @@ You can also download **ready-to-use CSV files** from the [Viewer Project](https
 | **Filter by IDs (optional)** | Comma-separated list of Fiori IDs to analyze specific apps |
 | **Execute on Local or Server** | Choose execution mode |
 
----
 
 ## 📤 Output
 
@@ -84,15 +76,41 @@ The report generates both **JSON** and **CSV** files, which can be:
 
 --
 
+## How it Works (Technical Overview)
+The analyzer uses two main ABAP classes to determine the programming model behind Fiori apps:
+ZCL_FIORI_MODEL_MANIFEST
+This class is responsible for extracting information from the app's manifest.json file. Important note: The manifest is NOT parsed into JSON structures, but analyzed using string operations and pattern matching. This design choice was necessary because manifest structures vary significantly across different Fiori app types (Fiori Elements V2/V4, freestyle apps, apps with extensions, etc.)
+
+The class extracts:
+- The main OData service name and URI
+- The primary entity set used by the app
+- OData version (V2 or V4)
+- Data source configuration
+
+ZCL_FIORI_MODEL_ANALYZER
+This is the core engine that performs the classification. For each app, it:
+
+- Retrieves the manifest using the BSP application name
+- Determines the OData version by checking SEGW projects (V2) or Service Bindings (V4)
+- Resolves CDS views by reading the DDL source code:
+    Identifies the Consumption view (C_*)
+    Extracts the Interface view (I_*) from the FROM clause
+- Classifies the programming model using multiple detection strategies:
+    RAP: Looks for root view entity, projections on R_* views, VDM consumption patterns
+    BOPF: Detects BOPF annotations (@ObjectModel.modelCategory: #BOPF, transactionalProcessingEnabled) by navigating through the CDS view hierarchy
+    N/A: Gateway Classic (non-managed scenarios)
+- Detects FPM extensions by searching for controller/view extensions in the manifest
+
 ## What's next
 
-- [ ] Generate data for custom BSP Fiori apps automatically  
-- [ ] Improve *N/A* classification logic  
-- [ ] Validate accuracy across different S/4HANA releases  
-- [ ] Analyzing Custom Fiori Apps: Support automatic detection of custom Fiori Elements apps built with SAP Fiori Tools  
+- Generate data for custom BSP Fiori apps automatically  
+- Improve *N/A* classification logic  
+- Some SEGW Projects are not determined
+- Validate accuracy across different S/4HANA releases  
+- Analyzing Custom Fiori Apps: Support detection of custom Fiori Elements apps built with SAP Fiori Tools  
 
 ---
 
  **Credits**  
-- Code versioning & distribution via [**abapGit**](https://abapgit.org) (contributors (https://abapgit.org/sponsor.html))  
-- Static code checks via [**abaplint**](https://abaplint.app) (contributors (https://github.com/abaplint/abaplint/graphs/contributors))  
+- Code versioning & distribution via [**abapGit**](https://abapgit.org) ([contributors](https://abapgit.org/sponsor.html))  
+- Static code checks via [**abaplint**](https://abaplint.app) ([contributors](https://github.com/abaplint/abaplint/graphs/contributors))  
