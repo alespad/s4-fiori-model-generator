@@ -20,15 +20,11 @@ The **ABAP generator** analyzes both **standard and custom Fiori apps** on your 
 
 The analyzer reads each app’s `manifest.json`, cross-references it with DDL sources and Service Definitions, and generates **JSON** and **CSV** outputs for visualization using the [viewer application](https://github.com/alespad/s4-fiori-model-analyzer).
 
----
-
 ## Installation
 
 1. **Clone or download** this repository  
 2. **Import the ABAP objects** into your S/4HANA system using [abapGit](https://abapgit.org) or your preferred method  
 3. **Activate all objects**
-
----
 
 ## Usage
 
@@ -74,11 +70,9 @@ The report generates both **JSON** and **CSV** files, which can be:
   → Update `sources.json` and add your CSV/JSON files  
   → Help expand coverage for additional **S/4HANA releases**
 
---
-
 ## How it Works (Technical Overview)
 The analyzer uses two main ABAP classes to determine the programming model behind Fiori apps:
-ZCL_FIORI_MODEL_MANIFEST
+### Class ZCL_FIORI_MODEL_MANIFEST
 This class is responsible for extracting information from the app's manifest.json file. Important note: The manifest is NOT parsed into JSON structures, but analyzed using string operations and pattern matching. This design choice was necessary because manifest structures vary significantly across different Fiori app types (Fiori Elements V2/V4, freestyle apps, apps with extensions, etc.)
 
 The class extracts:
@@ -87,18 +81,18 @@ The class extracts:
 - OData version (V2 or V4)
 - Data source configuration
 
-ZCL_FIORI_MODEL_ANALYZER
+### Class ZCL_FIORI_MODEL_ANALYZER
 This is the core engine that performs the classification. For each app, it:
 
 - Retrieves the manifest using the BSP application name
 - Determines the OData version by checking SEGW projects (V2) or Service Bindings (V4)
 - Resolves CDS views by reading the DDL source code:
-    Identifies the Consumption view (C_*)
-    Extracts the Interface view (I_*) from the FROM clause
+    - Identifies the Consumption view (C_*)
+    - Extracts the Interface view (I_*) from the FROM clause
 - Classifies the programming model using multiple detection strategies:
-    RAP: Looks for root view entity, projections on R_* views, VDM consumption patterns
-    BOPF: Detects BOPF annotations (@ObjectModel.modelCategory: #BOPF, transactionalProcessingEnabled) by navigating through the CDS view hierarchy
-    N/A: Gateway Classic (non-managed scenarios)
+    - RAP: Looks for root view entity, projections on R_* views, VDM consumption patterns
+    - BOPF: Detects BOPF annotations (@ObjectModel.modelCategory: #BOPF, transactionalProcessingEnabled) by navigating through the CDS view hierarchy
+    - N/A: Gateway Classic (non-managed scenarios)
 - Detects FPM extensions by searching for controller/view extensions in the manifest
 
 ## What's next
@@ -110,7 +104,6 @@ This is the core engine that performs the classification. For each app, it:
 - Analyzing Custom Fiori Apps: Support detection of custom Fiori Elements apps built with SAP Fiori Tools  
 
 ---
-
  **Credits**  
 - Code versioning & distribution via [**abapGit**](https://abapgit.org) ([contributors](https://abapgit.org/sponsor.html))  
 - Static code checks via [**abaplint**](https://abaplint.app) ([contributors](https://github.com/abaplint/abaplint/graphs/contributors))  
