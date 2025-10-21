@@ -3,12 +3,12 @@
 This repository contains the **ABAP generator** component of the [Fiori Programming Model Analyzer](https://github.com/alespad/s4-fiori-model-analyzer) project.
 
 
-📝 **SAP Community Blog Post:** [Is It RAP or BOPF? Fiori Programming Model Analyzer for S/4HANA](https://community.sap.com/)
+📝 **SAP Community Blog Post:** [Is It RAP or BOPF? Fiori Programming Model Analyzer for S/4HANA](https://community.sap.com/t5/abap-blog-posts/is-it-rap-or-bopf-fiori-programming-model-analyzer-for-s-4hana/ba-p/14240651)
 
 
 ## Overview
 
-The **ABAP generator** analyzes both **standard and custom Fiori apps** on your S/4HANA system and automatically classifies them based on key technical indicators:
+The **ABAP generator** analyzes **Fiori apps** on your S/4HANA system and automatically classifies them based on key technical indicators:
 
 | Category | Description |
 |-----------|--------------|
