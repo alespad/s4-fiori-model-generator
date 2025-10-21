@@ -81,11 +81,6 @@ CLASS zcl_fiori_model_analyzer DEFINITION
         !app          TYPE app
       RETURNING
         VALUE(result) TYPE result .
-    CLASS-METHODS c_to_i
-      IMPORTING
-        !cds_c       TYPE string
-      RETURNING
-        VALUE(cds_i) TYPE string .
     CLASS-METHODS read_ddl_source
       IMPORTING
         !ddlname      TYPE string
@@ -202,12 +197,18 @@ CLASS zcl_fiori_model_analyzer DEFINITION
       RETURNING
         VALUE(is_vdm) TYPE abap_bool.
 
-
     CLASS-METHODS extract_entity_from_routing
       IMPORTING
         !manifest_json     TYPE string
       RETURNING
         VALUE(entity_name) TYPE string.
+
+    " NEW METHOD: Extract view name from FROM clause
+    CLASS-METHODS extract_from_clause
+      IMPORTING
+        !ddl_source      TYPE string
+      RETURNING
+        VALUE(view_name) TYPE string.
 ENDCLASS.
 
 
@@ -248,30 +249,30 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
     " Split URI into segments
     SPLIT result-service_uri AT '/' INTO TABLE DATA(segments).
 
-" Start from last segment and go backwards until finding a non-numeric one
-DATA: lines TYPE i,
-      index TYPE i,
-      segment TYPE string.
+    " Start from last segment and go backwards until finding a non-numeric one
+    DATA: lines   TYPE i,
+          index   TYPE i,
+          segment TYPE string.
 
-lines = lines( segments ).
+    lines = lines( segments ).
 
-DO lines TIMES.
-  index = lines - sy-index + 1.
-  READ TABLE segments INTO segment INDEX index.
-  IF sy-subrc = 0.
-    " Check if segment contains non-numeric characters
-    IF segment CN '0123456789'.
-      result-main_service_name = segment.
-      EXIT.
-    ENDIF.
-  ENDIF.
-ENDDO.
+    DO lines TIMES.
+      index = lines - sy-index + 1.
+      READ TABLE segments INTO segment INDEX index.
+      IF sy-subrc = 0.
+        " Check if segment contains non-numeric characters
+        IF segment CN '0123456789'.
+          result-main_service_name = segment.
+          EXIT.
+        ENDIF.
+      ENDIF.
+    ENDDO.
   ENDMETHOD.
 
 
   METHOD determine_odata_version.
     DATA: segw_project       TYPE /iwbep/i_sbd_sv-project,
-          service_name_srv   TYPE /IWBEP/SBDM_PROJECT,
+          service_name_srv   TYPE /iwbep/sbdm_project,
           service_definition TYPE string.
 
     continue_processing = abap_true.
@@ -346,27 +347,36 @@ ENDDO.
     " Normalize entity name (remove 'Results' suffix if present)
     normalized_entity = normalize_entity_name( entity_set ).
 
+    " Start with the entity name as C_
     name_c = normalized_entity.
-    name_i = c_to_i( name_c ).
-
-    " Try to read DDL sources
-    src_i = read_ddl_source( name_i ).
     src_c = read_ddl_source( name_c ).
 
-    " If sources not found, search for alias
-    IF src_i IS INITIAL AND src_c IS INITIAL.
+    " If C_ not found, search for alias in service definition
+    IF src_c IS INITIAL.
       name_c = find_alias(
         service_binding = service_name
         entity = entity_set ).
 
       IF name_c IS NOT INITIAL.
-        name_i = c_to_i( name_c ).
-        src_i = read_ddl_source( name_i ).
         src_c = read_ddl_source( name_c ).
       ELSE.
-        CLEAR: name_c, name_i.
+        CLEAR: name_c, name_i, src_c, src_i.
+        RETURN.
       ENDIF.
     ENDIF.
+
+    " ========================================
+    " Extract I_ view from C_ source using FROM clause
+    " This is the KEY change - no more c_to_i assumptions!
+    " ========================================
+    IF src_c IS NOT INITIAL.
+      name_i = extract_from_clause( src_c ).
+
+      IF name_i IS NOT INITIAL.
+        src_i = read_ddl_source( name_i ).
+      ENDIF.
+    ENDIF.
+
   ENDMETHOD.
 
 
@@ -524,119 +534,163 @@ ENDDO.
 
 
   METHOD check_bopf_indicators_v2.
+    DATA: from_view   TYPE string,
+          src_from    TYPE string,
+          deeper_view TYPE string,
+          src_deeper  TYPE string.
+
     is_bopf = abap_false.
     CLEAR entity_name.
 
-    " Check for explicit BOPF annotation
+    " ========================================
+    " Check 1: Explicit BOPF annotation
+    " ========================================
     IF src_i CS '@ObjectModel.modelCategory: #BOPF'
       OR src_c CS '@ObjectModel.modelCategory: #BOPF'.
       is_bopf = abap_true.
       entity_name = COND string(
-        WHEN src_i IS NOT INITIAL
-        THEN name_i
+        WHEN src_i IS NOT INITIAL THEN name_i
         ELSE name_c ).
       RETURN.
     ENDIF.
 
-    " Check for transactional processing delegation pattern
-    CHECK src_c CS 'transactionalProcessingDelegated'.
-    CHECK name_c CP 'C_*' AND src_c IS NOT INITIAL.
-
-    DATA: i_ref     TYPE string,
-          src_i_ref TYPE string.
-
-    FIND PCRE 'from\s+(I_[A-Za-z0-9_]+)' IN src_c
-      SUBMATCHES i_ref IGNORING CASE.
-
-    CHECK sy-subrc = 0 AND i_ref IS NOT INITIAL.
-
-    src_i_ref = read_ddl_source( i_ref ).
-
-    IF src_i_ref CS 'transactionalProcessingEnabled'
-      OR src_i_ref CS 'writeDraftPersistence'.
+    " ========================================
+    " Check 2: Direct transactionalProcessingEnabled on I_
+    " ========================================
+    IF src_i CS '@ObjectModel.transactionalProcessingEnabled'
+      OR src_i CS 'writeDraftPersistence'
+      OR src_i CS '@VDM.viewType: #TRANSACTIONAL'.
       is_bopf = abap_true.
-      entity_name = i_ref.
+      entity_name = name_i.
+      RETURN.
     ENDIF.
+
+    " ========================================
+    " Check 3: Navigate from C_ to I_ using FROM clause
+    " This handles C_BusinessPartner → I_BusinessPartnerTP
+    " ========================================
+    IF src_c IS NOT INITIAL.
+
+      " Extract the FROM view from C_
+      from_view = extract_from_clause( src_c ).
+
+      IF from_view IS NOT INITIAL.
+        " Read the FROM view source
+        src_from = read_ddl_source( from_view ).
+
+        " Check if FROM view has BOPF indicators
+        IF src_from CS '@ObjectModel.transactionalProcessingEnabled'
+          OR src_from CS 'writeDraftPersistence'
+          OR src_from CS '@VDM.viewType: #TRANSACTIONAL'
+          OR src_from CS '@ObjectModel.modelCategory: #BUSINESS_OBJECT'.
+
+          is_bopf = abap_true.
+          entity_name = from_view.  " ← The TP/BOPF view!
+          RETURN.
+        ENDIF.
+
+        " ========================================
+        " Navigate deeper: FROM view might also be a projection
+        " Example: C_ → I_TP → I_ → /BOBF/I_
+        " ========================================
+        IF src_from CS 'as select from' OR src_from CS 'as projection on'.
+          deeper_view = extract_from_clause( src_from ).
+
+          IF deeper_view IS NOT INITIAL AND deeper_view <> from_view.
+            src_deeper = read_ddl_source( deeper_view ).
+
+            IF src_deeper CS '@ObjectModel.transactionalProcessingEnabled'
+              OR src_deeper CS 'writeDraftPersistence'
+              OR src_deeper CS '@ObjectModel.modelCategory: #BOPF'.
+              is_bopf = abap_true.
+              entity_name = deeper_view.
+              RETURN.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
   ENDMETHOD.
 
 
-METHOD check_vdm_consumption.
-  DATA: src_to_check     TYPE string,
-        has_vdm_anno     TYPE abap_bool,
-        has_metadata_ext TYPE abap_bool,
-        has_c_naming     TYPE abap_bool.
+  METHOD check_vdm_consumption.
+    DATA: src_to_check     TYPE string,
+          has_vdm_anno     TYPE abap_bool,
+          has_metadata_ext TYPE abap_bool,
+          has_c_naming     TYPE abap_bool.
 
-  is_vdm = abap_false.
+    is_vdm = abap_false.
 
-  " Determine which source to check
-  src_to_check = COND string(
-    WHEN src_c IS NOT INITIAL
-    THEN src_c
-    ELSE src_i ).
+    " Determine which source to check
+    src_to_check = COND string(
+      WHEN src_c IS NOT INITIAL
+      THEN src_c
+      ELSE src_i ).
 
-  CHECK src_to_check IS NOT INITIAL.
+    CHECK src_to_check IS NOT INITIAL.
 
-  " ========================================
-  " CHECK 1: VDM annotation (flexible pattern for spacing)
-  " ========================================
-  FIND PCRE '@VDM\.viewType\s*:\s*#CONSUMPTION'
-    IN src_to_check
-    IGNORING CASE.
+    " ========================================
+    " CHECK 1: VDM annotation (flexible pattern for spacing)
+    " ========================================
+    FIND PCRE '@VDM\.viewType\s*:\s*#CONSUMPTION'
+      IN src_to_check
+      IGNORING CASE.
 
-  IF sy-subrc = 0.
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    IF sy-subrc = 0.
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-  " ========================================
-  " CHECK 2: Virtual elements with calculated by (RAP pattern)
-  " ========================================
-  IF src_to_check CS 'virtualElement'
-    AND src_to_check CS 'virtualElementCalculatedBy'.
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    " ========================================
+    " CHECK 2: Virtual elements with calculated by (RAP pattern)
+    " ========================================
+    IF src_to_check CS 'virtualElement'
+      AND src_to_check CS 'virtualElementCalculatedBy'.
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-  " ========================================
-  " CHECK 3: CDS with parameters and VDM-style annotations
-  " ========================================
-  IF ( src_to_check CS 'with parameters'
-    OR src_to_check CS '@Environment.systemField' )
-    AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    " ========================================
+    " CHECK 3: CDS with parameters and VDM-style annotations
+    " ========================================
+    IF ( src_to_check CS 'with parameters'
+      OR src_to_check CS '@Environment.systemField' )
+      AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-  " ========================================
-  " CHECK 4: Metadata extensions + C_ naming (common VDM pattern)
-  " ========================================
-  has_metadata_ext = xsdbool( src_to_check CS '@Metadata.allowExtensions' ).
-  has_c_naming = xsdbool( name_c CP 'C_*' OR name_i CP 'C_*' ).
+    " ========================================
+    " CHECK 4: Metadata extensions + C_ naming (common VDM pattern)
+    " ========================================
+    has_metadata_ext = xsdbool( src_to_check CS '@Metadata.allowExtensions' ).
+    has_c_naming = xsdbool( name_c CP 'C_*' OR name_i CP 'C_*' ).
 
-  IF has_metadata_ext = abap_true AND has_c_naming = abap_true.
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    IF has_metadata_ext = abap_true AND has_c_naming = abap_true.
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-  " ========================================
-  " CHECK 5: UI annotations + AccessControl (Fiori-ready views)
-  " ========================================
-  IF ( src_to_check CS '@UI.' OR src_to_check CS '@Search.searchable' )
-    AND src_to_check CS '@AccessControl.authorizationCheck'
-    AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    " ========================================
+    " CHECK 5: UI annotations + AccessControl (Fiori-ready views)
+    " ========================================
+    IF ( src_to_check CS '@UI.' OR src_to_check CS '@Search.searchable' )
+      AND src_to_check CS '@AccessControl.authorizationCheck'
+      AND ( name_c CP 'C_*' OR name_i CP 'C_*' ).
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-  " ========================================
-  " CHECK 6: ObjectModel usage type (VDM indicator)
-  " ========================================
-  IF src_to_check CS '@ObjectModel.usageType'.
-    is_vdm = abap_true.
-    RETURN.
-  ENDIF.
+    " ========================================
+    " CHECK 6: ObjectModel usage type (VDM indicator)
+    " ========================================
+    IF src_to_check CS '@ObjectModel.usageType'.
+      is_vdm = abap_true.
+      RETURN.
+    ENDIF.
 
-ENDMETHOD.
+  ENDMETHOD.
 
 
   METHOD classify.
@@ -681,6 +735,7 @@ ENDMETHOD.
         ENDIF.
       ENDIF.
 
+      " ============
       " ============================================================
       " OData V2 Classification
       " ============================================================
@@ -741,14 +796,6 @@ ENDMETHOD.
     " Set output parameters
     model = model_type.
     business_ent = business_entity.
-  ENDMETHOD.
-
-
-  METHOD c_to_i.
-    cds_i = cds_c.
-    IF cds_i CP 'C_*'.
-      REPLACE FIRST OCCURRENCE OF 'C_' IN cds_i WITH 'I_'.
-    ENDIF.
   ENDMETHOD.
 
 
@@ -1431,5 +1478,53 @@ ENDMETHOD.
       ENDIF.
     ENDIF.
 
+  ENDMETHOD.
+
+
+  METHOD extract_from_clause.
+    " Extract view name from FROM clause or PROJECTION ON clause
+    " Handles multiple patterns:
+    " - as select from VIEW_NAME
+    " - as projection on VIEW_NAME
+    " - from VIEW_NAME
+    " - projection on VIEW_NAME
+
+    CLEAR view_name.
+
+    " Pattern 1: as select from VIEW_NAME
+    FIND PCRE 'as\s+select\s+from\s+([A-Z/_][A-Z0-9_/]*)'
+         IN ddl_source
+         SUBMATCHES view_name
+         IGNORING CASE.
+
+    IF sy-subrc = 0 AND view_name IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " Pattern 2: as projection on VIEW_NAME
+    FIND PCRE 'as\s+projection\s+on\s+([A-Z/_][A-Z0-9_/]*)'
+         IN ddl_source
+         SUBMATCHES view_name
+         IGNORING CASE.
+
+    IF sy-subrc = 0 AND view_name IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " Pattern 3: from VIEW_NAME (without "as select")
+    FIND PCRE 'from\s+([A-Z/_][A-Z0-9_/]*)'
+         IN ddl_source
+         SUBMATCHES view_name
+         IGNORING CASE.
+
+    IF sy-subrc = 0 AND view_name IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " Pattern 4: projection on VIEW_NAME (without "as")
+    FIND PCRE 'projection\s+on\s+([A-Z/_][A-Z0-9_/]*)'
+         IN ddl_source
+         SUBMATCHES view_name
+         IGNORING CASE.
   ENDMETHOD.
 ENDCLASS.
