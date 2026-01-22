@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "category": "0",
+  "serviceDefinition": "ZSD_FIORI_CUST_MODEL",
+  "serviceBindingQualifier": "",
+  "binding": {
+    "version": 1,
+    "type": "ODATA",
+    "protocol": "V2"
+  }
+}

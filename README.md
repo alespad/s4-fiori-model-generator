@@ -72,7 +72,59 @@ The report generates both **JSON** and **CSV** files, **JSON** can be:
   → Help expand coverage for additional **S/4HANA releases**
 
 ## for Analyzing Custom Fiori Apps
-Coming Soon - Support for analyzing custom BSP Fiori applications deployed on your system.
+
+Analyze **custom BSP Fiori applications** deployed on your S/4HANA system using a **RAP Custom Entity**.
+
+### CDS Custom Entity: `ZI_FIORI_CUST_MODEL`
+
+This CDS view reads BSP applications directly from the system's **TADIR** table and analyzes them using the same classification engine used for standard Fiori apps.
+
+### How to Use
+
+**Option 1: ADT Preview**
+1. Open Eclipse ADT
+2. Navigate to `ZI_FIORI_CUST_MODEL`
+3. Right-click → **Open With** → **Data Preview**
+4. Use the filter fields to narrow down results
+
+**Option 2: OData Service**
+1. Activate Service Binding `ZSRVB_FIORI_CUST_MODEL`
+2. Access via OData V2 endpoint
+
+### Filter Criteria
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **BspName** | BSP application name (supports wildcards `*`) | `Z*`, `ZCUST_APP` |
+| **Author** | Developer user ID | `DEVELOPER1` |
+| **Devclass** | Package name | `ZCUSTOM_PKG` |
+
+### Output Fields
+
+| Field | Description |
+|-------|-------------|
+| **BspName** | BSP application name (key) |
+| **Devclass** | Package |
+| **Author** | Creator |
+| **ProgrammingModel** | RAP, BOPF, or N/A |
+| **OdataVersion** | 2.0 or 4.0 |
+| **BusinessEntity** | Root CDS view or BO name |
+| **MainServiceName** | OData service name |
+| **ServiceUri** | Service endpoint URI |
+| **SegwProject** | SEGW project (if V2) |
+| **FpmExtended** | Yes/No/N/A |
+| **AppName** | Application name from manifest |
+
+### Technical Components
+
+| Object | Type | Description |
+|--------|------|-------------|
+| `ZI_FIORI_CUST_MODEL` | CDS Custom Entity | Main view with UI annotations |
+| `ZCL_FIORI_CUST_MODEL_QUERY` | Class | RAP Query Provider (IF_RAP_QUERY_PROVIDER) |
+| `ZSD_FIORI_CUST_MODEL` | Service Definition | Exposes the custom entity |
+| `ZSRVB_FIORI_CUST_MODEL` | Service Binding | OData V2 binding |
+
+> **Note:** BSP applications without a valid `manifest.json` are automatically filtered out (they are not Fiori apps).
 
 ## How it Works (Technical Overview)
 The analyzer uses two main ABAP classes to determine the programming model behind Fiori apps:
@@ -100,10 +152,9 @@ This is the core engine that performs the classification. For each app, it:
 - Detects FPM extensions by searching for controller/view extensions in the manifest
 
 ## What's next
-- Improve *N/A* classification logic  
+- Improve *N/A* classification logic
 - Some SEGW Projects are not determined
 - Validate accuracy across different S/4HANA releases  
-- Analyzing Custom Fiori Apps: Support detection of custom Fiori Elements apps built with SAP Fiori Tools  
 
 ---
  **Credits**  
