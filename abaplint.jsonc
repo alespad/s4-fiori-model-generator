@@ -27,7 +27,9 @@
     "global_class": true,
     "implement_methods": true,
     "method_implemented_twice": true,
-    "no_prefixes": true,
+    "no_prefixes": {
+      "exclude": ["/src/zcl_fiori_cust_model_query.clas.abap"]
+    },
     "parser_error": true,
     "superclass_final": true,
     "unknown_types": true,
