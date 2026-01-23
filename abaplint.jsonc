@@ -8,6 +8,10 @@
       "url": "https://github.com/abaplint/deps",
       "folder": "/deps",
       "files": "/src/**/*.*"
+    },
+    {
+      "folder": "/deps",
+      "files": "/src/**/*.*"
     }
   ],
   "syntax": {

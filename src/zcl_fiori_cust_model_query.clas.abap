@@ -9,7 +9,7 @@ CLASS zcl_fiori_cust_model_query DEFINITION
   PRIVATE SECTION.
 
     TYPES:
-      BEGIN OF ty_result,
+      BEGIN OF result,
         bspname          TYPE c LENGTH 30,
         devclass         TYPE c LENGTH 30,
         author           TYPE c LENGTH 12,
@@ -21,9 +21,9 @@ CLASS zcl_fiori_cust_model_query DEFINITION
         segwproject      TYPE c LENGTH 40,
         fpmextended      TYPE c LENGTH 5,
         appname          TYPE c LENGTH 255,
-      END OF ty_result.
+      END OF result.
 
-    TYPES ty_result_table TYPE STANDARD TABLE OF ty_result WITH EMPTY KEY.
+    TYPES result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY.
 
     CLASS-METHODS get_bsp_list
       IMPORTING
@@ -31,7 +31,7 @@ CLASS zcl_fiori_cust_model_query DEFINITION
         filter_author   TYPE string OPTIONAL
         filter_devclass TYPE string OPTIONAL
       RETURNING
-        VALUE(result)   TYPE ty_result_table.
+        VALUE(result)   TYPE result_table.
 
     CLASS-METHODS analyze_bsp
       IMPORTING
@@ -39,31 +39,31 @@ CLASS zcl_fiori_cust_model_query DEFINITION
         devclass      TYPE clike
         author        TYPE clike
       RETURNING
-        VALUE(result) TYPE ty_result.
+        VALUE(result) TYPE result.
 
 ENDCLASS.
 
 
 
-CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
+CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
 
 
   METHOD if_rap_query_provider~select.
 
-    DATA: lt_result      TYPE ty_result_table,
+    DATA: results        TYPE result_table,
           filter_bsp     TYPE string,
-          filter_author  TYPE string,
+          filter_auth    TYPE string,
           filter_package TYPE string.
 
     " Get filter conditions
     TRY.
-        DATA(lt_filter_cond) = io_request->get_filter( )->get_as_ranges( ).
+        DATA(filter_conditions) = request->get_filter( )->get_as_ranges( ).
       CATCH cx_rap_query_filter_no_range.
-        CLEAR lt_filter_cond.
+        CLEAR filter_conditions.
     ENDTRY.
 
     " Extract filter values
-    LOOP AT lt_filter_cond ASSIGNING FIELD-SYMBOL(<filter>).
+    LOOP AT filter_conditions ASSIGNING FIELD-SYMBOL(<filter>).
       CASE <filter>-name.
         WHEN 'BSPNAME'.
           IF lines( <filter>-range ) > 0.
@@ -71,7 +71,7 @@ CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
           ENDIF.
         WHEN 'AUTHOR'.
           IF lines( <filter>-range ) > 0.
-            filter_author = <filter>-range[ 1 ]-low.
+            filter_auth = <filter>-range[ 1 ]-low.
           ENDIF.
         WHEN 'DEVCLASS'.
           IF lines( <filter>-range ) > 0.
@@ -81,106 +81,106 @@ CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
     ENDLOOP.
 
     " Get BSP list and analyze
-    lt_result = get_bsp_list(
+    results = get_bsp_list(
       filter_bsp_name = filter_bsp
-      filter_author   = filter_author
+      filter_author   = filter_auth
       filter_devclass = filter_package ).
 
     " Handle paging
-    DATA(lv_offset) = io_request->get_paging( )->get_offset( ).
-    DATA(lv_page_size) = io_request->get_paging( )->get_page_size( ).
+    DATA(offset) = request->get_paging( )->get_offset( ).
+    DATA(page_size) = request->get_paging( )->get_page_size( ).
 
-    IF lv_page_size > 0.
-      DATA(lv_max_index) = lv_offset + lv_page_size.
-      IF lv_max_index > lines( lt_result ).
-        lv_max_index = lines( lt_result ).
+    IF page_size > 0.
+      DATA(max_index) = offset + page_size.
+      IF max_index > lines( results ).
+        max_index = lines( results ).
       ENDIF.
     ELSE.
-      lv_max_index = lines( lt_result ).
+      max_index = lines( results ).
     ENDIF.
 
     " Apply paging
-    IF lv_offset > 0 OR lv_page_size > 0.
-      DATA lt_paged TYPE ty_result_table.
-      LOOP AT lt_result ASSIGNING FIELD-SYMBOL(<res>) FROM ( lv_offset + 1 ) TO lv_max_index.
-        APPEND <res> TO lt_paged.
+    IF offset > 0 OR page_size > 0.
+      DATA paged_results TYPE result_table.
+      LOOP AT results ASSIGNING FIELD-SYMBOL(<res>) FROM ( offset + 1 ) TO max_index.
+        APPEND <res> TO paged_results.
       ENDLOOP.
-      lt_result = lt_paged.
+      results = paged_results.
     ENDIF.
 
     " Set total count if requested
-    IF io_request->is_total_numb_of_rec_requested( ).
-      io_response->set_total_number_of_records( lines( lt_result ) ).
+    IF request->is_total_numb_of_rec_requested( ).
+      response->set_total_number_of_records( lines( results ) ).
     ENDIF.
 
     " Return data
-    io_response->set_data( lt_result ).
+    response->set_data( results ).
 
   ENDMETHOD.
 
 
   METHOD get_bsp_list.
 
-    DATA: lt_tadir TYPE STANDARD TABLE OF tadir,
-          ls_res   TYPE ty_result.
+    DATA: tadir_entries TYPE STANDARD TABLE OF tadir,
+          res           TYPE result.
 
     " Build dynamic WHERE clause
-    DATA: lv_where TYPE string.
+    DATA: where_clause TYPE string.
 
-    lv_where = |PGMID = 'R3TR' AND OBJECT = 'WAPA'|.
+    where_clause = |PGMID = 'R3TR' AND OBJECT = 'WAPA'|.
 
     " If no filter specified, default to custom BSPs only (Z* and Y*)
     IF filter_bsp_name IS INITIAL AND filter_author IS INITIAL AND filter_devclass IS INITIAL.
-      lv_where = lv_where && | AND ( OBJ_NAME LIKE 'Z%' OR OBJ_NAME LIKE 'Y%' )|.
+      where_clause = where_clause && | AND ( OBJ_NAME LIKE 'Z%' OR OBJ_NAME LIKE 'Y%' )|.
     ENDIF.
 
     IF filter_bsp_name IS NOT INITIAL.
-      DATA(lv_bsp_upper) = to_upper( filter_bsp_name ).
-      IF lv_bsp_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN lv_bsp_upper WITH '%'.
-        lv_where = lv_where && | AND OBJ_NAME LIKE '{ lv_bsp_upper }'|.
+      DATA(bsp_upper) = to_upper( filter_bsp_name ).
+      IF bsp_upper CS '*'.
+        REPLACE ALL OCCURRENCES OF '*' IN bsp_upper WITH '%'.
+        where_clause = where_clause && | AND OBJ_NAME LIKE '{ bsp_upper }'|.
       ELSE.
-        lv_where = lv_where && | AND OBJ_NAME = '{ lv_bsp_upper }'|.
+        where_clause = where_clause && | AND OBJ_NAME = '{ bsp_upper }'|.
       ENDIF.
     ENDIF.
 
     IF filter_author IS NOT INITIAL.
-      DATA(lv_author_upper) = to_upper( filter_author ).
-      IF lv_author_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN lv_author_upper WITH '%'.
-        lv_where = lv_where && | AND AUTHOR LIKE '{ lv_author_upper }'|.
+      DATA(author_upper) = to_upper( filter_author ).
+      IF author_upper CS '*'.
+        REPLACE ALL OCCURRENCES OF '*' IN author_upper WITH '%'.
+        where_clause = where_clause && | AND AUTHOR LIKE '{ author_upper }'|.
       ELSE.
-        lv_where = lv_where && | AND AUTHOR = '{ lv_author_upper }'|.
+        where_clause = where_clause && | AND AUTHOR = '{ author_upper }'|.
       ENDIF.
     ENDIF.
 
     IF filter_devclass IS NOT INITIAL.
-      DATA(lv_devclass_upper) = to_upper( filter_devclass ).
-      IF lv_devclass_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN lv_devclass_upper WITH '%'.
-        lv_where = lv_where && | AND DEVCLASS LIKE '{ lv_devclass_upper }'|.
+      DATA(devclass_upper) = to_upper( filter_devclass ).
+      IF devclass_upper CS '*'.
+        REPLACE ALL OCCURRENCES OF '*' IN devclass_upper WITH '%'.
+        where_clause = where_clause && | AND DEVCLASS LIKE '{ devclass_upper }'|.
       ELSE.
-        lv_where = lv_where && | AND DEVCLASS = '{ lv_devclass_upper }'|.
+        where_clause = where_clause && | AND DEVCLASS = '{ devclass_upper }'|.
       ENDIF.
     ENDIF.
 
     " Select BSP applications from TADIR
     SELECT obj_name, devclass, author
       FROM tadir
-      WHERE (lv_where)
-      INTO TABLE @DATA(lt_bsp).
+      WHERE (where_clause)
+      INTO TABLE @DATA(bsp_list).
 
     " Analyze each BSP
-    LOOP AT lt_bsp ASSIGNING FIELD-SYMBOL(<bsp>).
-      ls_res = analyze_bsp(
+    LOOP AT bsp_list ASSIGNING FIELD-SYMBOL(<bsp>).
+      res = analyze_bsp(
         bsp_name = <bsp>-obj_name
         devclass = <bsp>-devclass
         author   = <bsp>-author ).
 
       " Only add if manifest was found (valid Fiori app)
-      IF ls_res-bspname IS NOT INITIAL.
-        TRANSLATE ls_res TO UPPER CASE.
-        APPEND ls_res TO result.
+      IF res-bspname IS NOT INITIAL.
+        TRANSLATE res TO UPPER CASE.
+        APPEND res TO result.
       ENDIF.
     ENDLOOP.
 
@@ -189,23 +189,23 @@ CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
 
   METHOD analyze_bsp.
 
-    DATA: ls_app          TYPE zcl_fiori_model_analyzer=>app,
-          ls_analyzer_res TYPE zcl_fiori_model_analyzer=>result.
+    DATA: app             TYPE zcl_fiori_model_analyzer=>app,
+          analyzer_result TYPE zcl_fiori_model_analyzer=>result.
 
     " Clear result
     CLEAR result.
 
     " Set up input for analyzer
-    ls_app-bsp_name = bsp_name.
-    ls_app-fiori_id = bsp_name.  " Use BSP name as ID for custom apps
-    ls_app-app_name = bsp_name.
-    CLEAR ls_app-library_link.   " No library link for custom apps
+    app-bsp_name = bsp_name.
+    app-fiori_id = bsp_name.  " Use BSP name as ID for custom apps
+    app-app_name = bsp_name.
+    CLEAR app-library_link.   " No library link for custom apps
 
     " Call existing analyzer
-    ls_analyzer_res = zcl_fiori_model_analyzer=>analyze_app( ls_app ).
+    analyzer_result = zcl_fiori_model_analyzer=>analyze_app( app ).
 
     " Check if analysis was successful (manifest found)
-    IF ls_analyzer_res IS INITIAL.
+    IF analyzer_result IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -213,14 +213,15 @@ CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
     result-bspname          = bsp_name.
     result-devclass         = devclass.
     result-author           = author.
-    result-programmingmodel = ls_analyzer_res-programming_model.
-    result-odataversion     = ls_analyzer_res-odata_version.
-    result-businessentity   = ls_analyzer_res-business_entity.
-    result-mainservicename  = ls_analyzer_res-main_service_name.
-    result-serviceuri       = ls_analyzer_res-service_uri.
-    result-segwproject      = ls_analyzer_res-segw_project.
-    result-fpmextended      = ls_analyzer_res-fpm_extended.
-    result-appname          = ls_analyzer_res-app_name.
+    result-programmingmodel = analyzer_result-programming_model.
+    result-odataversion     = analyzer_result-odata_version.
+    result-businessentity   = analyzer_result-business_entity.
+    result-mainservicename  = analyzer_result-main_service_name.
+    result-serviceuri       = analyzer_result-service_uri.
+    result-segwproject      = analyzer_result-segw_project.
+    result-fpmextended      = analyzer_result-fpm_extended.
+    result-appname          = analyzer_result-app_name.
 
   ENDMETHOD.
+
 ENDCLASS.

@@ -1,4 +1,0 @@
-@EndUserText.label: 'Service Definition for Custom Fiori Model'
-define service ZSD_FIORI_CUST_MODEL {
-  expose ZI_FIORI_CUST_MODEL;
-}
