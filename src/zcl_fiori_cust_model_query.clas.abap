@@ -57,7 +57,7 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
 
     " Get filter conditions
     TRY.
-        DATA(filter_conditions) = request->get_filter( )->get_as_ranges( ).
+        DATA(filter_conditions) = io_request->get_filter( )->get_as_ranges( ).
       CATCH cx_rap_query_filter_no_range.
         CLEAR filter_conditions.
     ENDTRY.
@@ -87,8 +87,8 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
       filter_devclass = filter_package ).
 
     " Handle paging
-    DATA(offset) = request->get_paging( )->get_offset( ).
-    DATA(page_size) = request->get_paging( )->get_page_size( ).
+    DATA(offset) = io_request->get_paging( )->get_offset( ).
+    DATA(page_size) = io_request->get_paging( )->get_page_size( ).
 
     IF page_size > 0.
       DATA(max_index) = offset + page_size.
@@ -109,12 +109,12 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
     ENDIF.
 
     " Set total count if requested
-    IF request->is_total_numb_of_rec_requested( ).
-      response->set_total_number_of_records( lines( results ) ).
+    IF io_request->is_total_numb_of_rec_requested( ).
+      io_response->set_total_number_of_records( lines( results ) ).
     ENDIF.
 
     " Return data
-    response->set_data( results ).
+    io_response->set_data( results ).
 
   ENDMETHOD.
 
