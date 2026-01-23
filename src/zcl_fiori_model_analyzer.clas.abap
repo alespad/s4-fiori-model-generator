@@ -57,6 +57,11 @@ CLASS zcl_fiori_model_analyzer DEFINITION
       IMPORTING
         !res  TYPE result_table
         !path TYPE string .
+    CLASS-METHODS analyze_app
+      IMPORTING
+        !app          TYPE app
+      RETURNING
+        VALUE(result) TYPE result .
   PRIVATE SECTION.
 
     CLASS-METHODS read_input_csv_from_string
@@ -76,11 +81,6 @@ CLASS zcl_fiori_model_analyzer DEFINITION
         !ids          TYPE string_table OPTIONAL
       RETURNING
         VALUE(result) TYPE app_table .
-    CLASS-METHODS analyze_app
-      IMPORTING
-        !app          TYPE app
-      RETURNING
-        VALUE(result) TYPE result .
     CLASS-METHODS read_ddl_source
       IMPORTING
         !ddlname      TYPE string
@@ -717,7 +717,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
           is_root     = is_root
           entity_name = business_entity ).
 
-      IF is_root = abap_true.
+      IF is_root = abap_true OR business_entity is NOT INITIAL.
         model_type = model_rap.
       ENDIF.
 
@@ -731,7 +731,6 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
 
         IF r_entity IS NOT INITIAL.
           business_entity = r_entity.
-          model_type = model_rap.
         ENDIF.
       ENDIF.
 
@@ -1528,3 +1527,4 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
          IGNORING CASE.
   ENDMETHOD.
 ENDCLASS.
+

@@ -10,17 +10,17 @@ CLASS zcl_fiori_cust_model_query DEFINITION
 
     TYPES:
       BEGIN OF ty_result,
-        bsp_name          TYPE c LENGTH 30,
-        devclass          TYPE c LENGTH 30,
-        author            TYPE c LENGTH 12,
-        programming_model TYPE c LENGTH 10,
-        odata_version     TYPE c LENGTH 5,
-        business_entity   TYPE c LENGTH 80,
-        main_service_name TYPE c LENGTH 80,
-        service_uri       TYPE c LENGTH 255,
-        segw_project      TYPE c LENGTH 40,
-        fpm_extended      TYPE c LENGTH 5,
-        app_name          TYPE c LENGTH 255,
+        bspname          TYPE c LENGTH 30,
+        devclass         TYPE c LENGTH 30,
+        author           TYPE c LENGTH 12,
+        programmingmodel TYPE c LENGTH 10,
+        odataversion     TYPE c LENGTH 5,
+        businessentity   TYPE c LENGTH 80,
+        mainservicename  TYPE c LENGTH 80,
+        serviceuri       TYPE c LENGTH 255,
+        segwproject      TYPE c LENGTH 40,
+        fpmextended      TYPE c LENGTH 5,
+        appname          TYPE c LENGTH 255,
       END OF ty_result.
 
     TYPES ty_result_table TYPE STANDARD TABLE OF ty_result WITH EMPTY KEY.
@@ -45,7 +45,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
+CLASS ZCL_FIORI_CUST_MODEL_QUERY IMPLEMENTATION.
+
 
   METHOD if_rap_query_provider~select.
 
@@ -128,6 +129,11 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
 
     lv_where = |PGMID = 'R3TR' AND OBJECT = 'WAPA'|.
 
+    " If no filter specified, default to custom BSPs only (Z* and Y*)
+    IF filter_bsp_name IS INITIAL AND filter_author IS INITIAL AND filter_devclass IS INITIAL.
+      lv_where = lv_where && | AND ( OBJ_NAME LIKE 'Z%' OR OBJ_NAME LIKE 'Y%' )|.
+    ENDIF.
+
     IF filter_bsp_name IS NOT INITIAL.
       DATA(lv_bsp_upper) = to_upper( filter_bsp_name ).
       IF lv_bsp_upper CS '*'.
@@ -172,7 +178,8 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
         author   = <bsp>-author ).
 
       " Only add if manifest was found (valid Fiori app)
-      IF ls_res-bsp_name IS NOT INITIAL.
+      IF ls_res-bspname IS NOT INITIAL.
+        TRANSLATE ls_res TO UPPER CASE.
         APPEND ls_res TO result.
       ENDIF.
     ENDLOOP.
@@ -203,18 +210,17 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
     ENDIF.
 
     " Map result
-    result-bsp_name          = bsp_name.
-    result-devclass          = devclass.
-    result-author            = author.
-    result-programming_model = ls_analyzer_res-programming_model.
-    result-odata_version     = ls_analyzer_res-odata_version.
-    result-business_entity   = ls_analyzer_res-business_entity.
-    result-main_service_name = ls_analyzer_res-main_service_name.
-    result-service_uri       = ls_analyzer_res-service_uri.
-    result-segw_project      = ls_analyzer_res-segw_project.
-    result-fpm_extended      = ls_analyzer_res-fpm_extended.
-    result-app_name          = ls_analyzer_res-app_name.
+    result-bspname          = bsp_name.
+    result-devclass         = devclass.
+    result-author           = author.
+    result-programmingmodel = ls_analyzer_res-programming_model.
+    result-odataversion     = ls_analyzer_res-odata_version.
+    result-businessentity   = ls_analyzer_res-business_entity.
+    result-mainservicename  = ls_analyzer_res-main_service_name.
+    result-serviceuri       = ls_analyzer_res-service_uri.
+    result-segwproject      = ls_analyzer_res-segw_project.
+    result-fpmextended      = ls_analyzer_res-fpm_extended.
+    result-appname          = ls_analyzer_res-app_name.
 
   ENDMETHOD.
-
 ENDCLASS.

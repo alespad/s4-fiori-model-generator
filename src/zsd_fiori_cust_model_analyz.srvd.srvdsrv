@@ -1,0 +1,4 @@
+@EndUserText.label: 'Fiori Model Analyzer Custom Apps'
+define service ZSD_FIORI_CUST_MODEL_ANALYZ {
+  expose ZI_FIORI_CUST_MODEL;
+}
