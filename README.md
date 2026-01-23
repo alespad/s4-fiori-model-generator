@@ -88,7 +88,7 @@ This CDS view reads BSP applications directly from the system's **TADIR** table 
 4. Use the filter fields to narrow down results
 
 **Option 2: OData Service**
-1. Activate Service Binding `ZSRVB_FIORI_CUST_MODEL`
+1. Activate Service Binding `ZSRV_FIORI_CUST_MODEL_ANALYZ`
 2. Access via OData V2 endpoint
 
 ### Filter Criteria
@@ -121,8 +121,8 @@ This CDS view reads BSP applications directly from the system's **TADIR** table 
 |--------|------|-------------|
 | `ZI_FIORI_CUST_MODEL` | CDS Custom Entity | Main view with UI annotations |
 | `ZCL_FIORI_CUST_MODEL_QUERY` | Class | RAP Query Provider (IF_RAP_QUERY_PROVIDER) |
-| `ZSD_FIORI_CUST_MODEL` | Service Definition | Exposes the custom entity |
-| `ZSRVB_FIORI_CUST_MODEL` | Service Binding | OData V2 binding |
+| `ZSD_FIORI_CUST_MODEL_ANALYZ` | Service Definition | Exposes the custom entity |
+| `ZSRV_FIORI_CUST_MODEL_ANALYZ` | Service Binding | OData V4 binding |
 
 > **Note:** BSP applications without a valid `manifest.json` are automatically filtered out (they are not Fiori apps).
 
