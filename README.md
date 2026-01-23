@@ -89,7 +89,7 @@ This CDS view reads BSP applications directly from the system's **TADIR** table 
 
 **Option 2: OData Service**
 1. Activate Service Binding `ZSRV_FIORI_CUST_MODEL_ANALYZ`
-2. Access via OData V2 endpoint
+2. Access via OData V4 endpoint
 
 ### Filter Criteria
 
