@@ -1152,7 +1152,7 @@ CLASS ZCL_FIORI_MODEL_ANALYZER IMPLEMENTATION.
     CLEAR name_c.
 
     " Step 1: Get Service Definition from Service Binding
-    SELECT SINGLE service_name
+    SELECT SINGLE srvdname
       FROM srvb_service_details
       INTO @service_definition
       WHERE srvb_name = @service_bnd

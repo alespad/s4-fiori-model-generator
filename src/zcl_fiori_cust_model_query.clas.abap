@@ -24,12 +24,15 @@ CLASS zcl_fiori_cust_model_query DEFINITION
       END OF result.
 
     TYPES result_table TYPE STANDARD TABLE OF result WITH EMPTY KEY.
+    TYPES rng_bspname  TYPE RANGE OF tadir-obj_name.
+    TYPES rng_author   TYPE RANGE OF tadir-author.
+    TYPES rng_devclass TYPE RANGE OF tadir-devclass.
 
     CLASS-METHODS get_bsp_list
       IMPORTING
-        filter_bsp_name TYPE string OPTIONAL
-        filter_author   TYPE string OPTIONAL
-        filter_devclass TYPE string OPTIONAL
+        it_rng_bspname  TYPE rng_bspname  OPTIONAL
+        it_rng_author   TYPE rng_author   OPTIONAL
+        it_rng_devclass TYPE rng_devclass OPTIONAL
       RETURNING
         VALUE(result)   TYPE result_table.
 
@@ -50,44 +53,43 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
 
   METHOD if_rap_query_provider~select.
 
-    DATA: results        TYPE result_table,
-          filter_bsp     TYPE string,
-          filter_auth    TYPE string,
-          filter_package TYPE string.
+    DATA: rng_bsp     TYPE rng_bspname,
+          rng_auth    TYPE rng_author,
+          rng_package TYPE rng_devclass.
 
-    " Get filter conditions
     TRY.
         DATA(filter_conditions) = io_request->get_filter( )->get_as_ranges( ).
       CATCH cx_rap_query_filter_no_range.
         CLEAR filter_conditions.
     ENDTRY.
 
-    " Extract filter values
-    LOOP AT filter_conditions ASSIGNING FIELD-SYMBOL(<filter>).
-      CASE <filter>-name.
-        WHEN 'BSPNAME'.
-          IF lines( <filter>-range ) > 0.
-            filter_bsp = <filter>-range[ 1 ]-low.
-          ENDIF.
-        WHEN 'AUTHOR'.
-          IF lines( <filter>-range ) > 0.
-            filter_auth = <filter>-range[ 1 ]-low.
-          ENDIF.
-        WHEN 'DEVCLASS'.
-          IF lines( <filter>-range ) > 0.
-            filter_package = <filter>-range[ 1 ]-low.
-          ENDIF.
-      ENDCASE.
+    " Convert OData string ranges to typed ABAP range tables
+    LOOP AT filter_conditions ASSIGNING FIELD-SYMBOL(<cond>).
+      LOOP AT <cond>-range ASSIGNING FIELD-SYMBOL(<rng>).
+        CASE <cond>-name.
+          WHEN 'BSPNAME'.
+            APPEND VALUE #( sign = <rng>-sign  option = <rng>-option
+                            low  = to_upper( <rng>-low )
+                            high = to_upper( <rng>-high ) ) TO rng_bsp.
+          WHEN 'AUTHOR'.
+            APPEND VALUE #( sign = <rng>-sign  option = <rng>-option
+                            low  = to_upper( <rng>-low )
+                            high = to_upper( <rng>-high ) ) TO rng_auth.
+          WHEN 'DEVCLASS'.
+            APPEND VALUE #( sign = <rng>-sign  option = <rng>-option
+                            low  = to_upper( <rng>-low )
+                            high = to_upper( <rng>-high ) ) TO rng_package.
+        ENDCASE.
+      ENDLOOP.
     ENDLOOP.
 
-    " Get BSP list and analyze
-    results = get_bsp_list(
-      filter_bsp_name = filter_bsp
-      filter_author   = filter_auth
-      filter_devclass = filter_package ).
+    DATA(results) = get_bsp_list(
+      it_rng_bspname  = rng_bsp
+      it_rng_author   = rng_auth
+      it_rng_devclass = rng_package ).
 
     " Handle paging
-    DATA(offset) = io_request->get_paging( )->get_offset( ).
+    DATA(offset)    = io_request->get_paging( )->get_offset( ).
     DATA(page_size) = io_request->get_paging( )->get_page_size( ).
 
     IF page_size > 0.
@@ -99,7 +101,6 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
       max_index = lines( results ).
     ENDIF.
 
-    " Apply paging
     IF offset > 0 OR page_size > 0.
       DATA paged_results TYPE result_table.
       LOOP AT results ASSIGNING FIELD-SYMBOL(<res>) FROM ( offset + 1 ) TO max_index.
@@ -108,12 +109,10 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
       results = paged_results.
     ENDIF.
 
-    " Set total count if requested
     IF io_request->is_total_numb_of_rec_requested( ).
       io_response->set_total_number_of_records( lines( results ) ).
     ENDIF.
 
-    " Return data
     io_response->set_data( results ).
 
   ENDMETHOD.
@@ -121,63 +120,36 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
 
   METHOD get_bsp_list.
 
-    DATA: tadir_entries TYPE STANDARD TABLE OF tadir,
-          res           TYPE result.
+    DATA lrng_bsp      TYPE rng_bspname.
+    DATA lrng_auth     TYPE rng_author.
+    DATA lrng_devclass TYPE rng_devclass.
 
-    " Build dynamic WHERE clause
-    DATA: where_clause TYPE string.
+    lrng_bsp      = it_rng_bspname.
+    lrng_auth     = it_rng_author.
+    lrng_devclass = it_rng_devclass.
 
-    where_clause = |PGMID = 'R3TR' AND OBJECT = 'WAPA'|.
-
-    " If no filter specified, default to custom BSPs only (Z* and Y*)
-    IF filter_bsp_name IS INITIAL AND filter_author IS INITIAL AND filter_devclass IS INITIAL.
-      where_clause = where_clause && | AND ( OBJ_NAME LIKE 'Z%' OR OBJ_NAME LIKE 'Y%' )|.
+    " No BspName filter → always restrict to custom namespace to avoid full system scan
+    IF lrng_bsp IS INITIAL.
+      lrng_bsp = VALUE #(
+        ( sign = 'I' option = 'CP' low = 'Z*' )
+        ( sign = 'I' option = 'CP' low = 'Y*' ) ).
     ENDIF.
 
-    IF filter_bsp_name IS NOT INITIAL.
-      DATA(bsp_upper) = to_upper( filter_bsp_name ).
-      IF bsp_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN bsp_upper WITH '%'.
-        where_clause = where_clause && | AND OBJ_NAME LIKE '{ bsp_upper }'|.
-      ELSE.
-        where_clause = where_clause && | AND OBJ_NAME = '{ bsp_upper }'|.
-      ENDIF.
-    ENDIF.
-
-    IF filter_author IS NOT INITIAL.
-      DATA(author_upper) = to_upper( filter_author ).
-      IF author_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN author_upper WITH '%'.
-        where_clause = where_clause && | AND AUTHOR LIKE '{ author_upper }'|.
-      ELSE.
-        where_clause = where_clause && | AND AUTHOR = '{ author_upper }'|.
-      ENDIF.
-    ENDIF.
-
-    IF filter_devclass IS NOT INITIAL.
-      DATA(devclass_upper) = to_upper( filter_devclass ).
-      IF devclass_upper CS '*'.
-        REPLACE ALL OCCURRENCES OF '*' IN devclass_upper WITH '%'.
-        where_clause = where_clause && | AND DEVCLASS LIKE '{ devclass_upper }'|.
-      ELSE.
-        where_clause = where_clause && | AND DEVCLASS = '{ devclass_upper }'|.
-      ENDIF.
-    ENDIF.
-
-    " Select BSP applications from TADIR
     SELECT obj_name, devclass, author
       FROM tadir
-      WHERE (where_clause)
+      WHERE pgmid    = 'R3TR'
+        AND object   = 'WAPA'
+        AND obj_name IN @lrng_bsp
+        AND author   IN @lrng_auth
+        AND devclass IN @lrng_devclass
       INTO TABLE @DATA(bsp_list).
 
-    " Analyze each BSP
     LOOP AT bsp_list ASSIGNING FIELD-SYMBOL(<bsp>).
-      res = analyze_bsp(
+      DATA(res) = analyze_bsp(
         bsp_name = <bsp>-obj_name
         devclass = <bsp>-devclass
         author   = <bsp>-author ).
 
-      " Only add if manifest was found (valid Fiori app)
       IF res-bspname IS NOT INITIAL.
         TRANSLATE res TO UPPER CASE.
         APPEND res TO result.
@@ -192,24 +164,19 @@ CLASS zcl_fiori_cust_model_query IMPLEMENTATION.
     DATA: app             TYPE zcl_fiori_model_analyzer=>app,
           analyzer_result TYPE zcl_fiori_model_analyzer=>result.
 
-    " Clear result
     CLEAR result.
 
-    " Set up input for analyzer
     app-bsp_name = bsp_name.
-    app-fiori_id = bsp_name.  " Use BSP name as ID for custom apps
+    app-fiori_id = bsp_name.
     app-app_name = bsp_name.
-    CLEAR app-library_link.   " No library link for custom apps
+    CLEAR app-library_link.
 
-    " Call existing analyzer
     analyzer_result = zcl_fiori_model_analyzer=>analyze_app( app ).
 
-    " Check if analysis was successful (manifest found)
     IF analyzer_result IS INITIAL.
       RETURN.
     ENDIF.
 
-    " Map result
     result-bspname          = bsp_name.
     result-devclass         = devclass.
     result-author           = author.
